@@ -239,31 +239,44 @@
 
   <div class="grid two">
     <div class="card">
-      <h2>Training Load &mdash; Acute vs. Chronic</h2>
-      <div class="legend">
-        <span><i style="background: var(--orange);"></i>Acute (weekly)</span>
-        <span><i style="background: var(--series-run);"></i>Chronic (4-wk avg)</span>
-      </div>
+      <h2>Session Count &mdash; Weekly</h2>
       <div class="chart-wrap">
         <svg class="chart" id="loadChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
         <div class="tooltip" id="loadTooltip"></div>
       </div>
     </div>
     <div class="card">
-      <h2>Average Heart Rate &mdash; Weekly</h2>
+      <h2>Discipline Mix &mdash; Weekly</h2>
+      <div class="legend">
+        <span><i style="background: var(--series-run);"></i>Run</span>
+        <span><i style="background: var(--series-ride);"></i>Ride</span>
+        <span><i style="background: var(--series-swim);"></i>Swim</span>
+      </div>
       <div class="chart-wrap">
-        <svg class="chart" id="hrChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
-        <div class="tooltip" id="hrTooltip"></div>
+        <svg class="chart" id="mixChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="mixTooltip"></div>
       </div>
     </div>
   </div>
 
-  <div class="grid one">
+  <div class="grid two">
     <div class="card">
-      <h2>Elevation Gained &mdash; Weekly</h2>
+      <h2>Easy/Hard Split &mdash; Weekly (Run)</h2>
+      <div class="legend">
+        <span><i style="background: var(--text-secondary);"></i>Easy</span>
+        <span><i style="background: var(--orange);"></i>Hard</span>
+      </div>
       <div class="chart-wrap">
-        <svg class="chart" id="elevChart" viewBox="0 0 1000 160" preserveAspectRatio="none"></svg>
-        <div class="tooltip" id="elevTooltip"></div>
+        <svg class="chart" id="splitChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="splitTooltip"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Longest Run &mdash; Weekly Progression</h2>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Target: 28&ndash;32km peak before Munich taper</div>
+      <div class="chart-wrap">
+        <svg class="chart" id="longChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="longTooltip"></div>
       </div>
     </div>
   </div>
@@ -386,91 +399,119 @@
 })();
 
 (function() {
-  const wk = [
-    {week:"May 18", hours:2.4, chronic:2.4, elev:135, hr:160},
-    {week:"May 25", hours:13.9, chronic:8.1, elev:1312, hr:145},
-    {week:"Jun 1", hours:11.4, chronic:9.2, elev:302, hr:145},
-    {week:"Jun 8", hours:12.8, chronic:10.1, elev:133, hr:140},
-    {week:"Jun 15", hours:12.9, chronic:12.8, elev:324, hr:142},
-    {week:"Jun 22", hours:12.4, chronic:12.4, elev:169, hr:134},
-    {week:"Jun 29", hours:7.8, chronic:11.5, elev:167, hr:130},
-    {week:"Jul 6", hours:6.5, chronic:9.9, elev:153, hr:137},
-    {week:"Jul 13", hours:2.3, chronic:7.3, elev:31, hr:137, partial:true}
-  ];
   const ns = "http://www.w3.org/2000/svg";
   function el(tag, attrs) { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
-  // --- dual-line: acute vs chronic load ---
+  // Session-level data (same source as Training History) for the four charts below.
+  // MAX_HR is the confirmed observed max (207bpm) from the full 6-month analysis —
+  // real, not estimated — used to classify easy (<78%) vs hard (>=87%) run effort.
+  const MAX_HR = 207;
+  const sessionWeeks = [
+    {week:"May 18", sessions:[{type:"Run",distance_km:10.0,duration_min:48.8,avg_hr:158},{type:"Run",distance_km:10.01,duration_min:39.9,avg_hr:175},{type:"Run",distance_km:10.0,duration_min:54.3,avg_hr:152}]},
+    {week:"May 25", sessions:[{type:"Run",distance_km:13.01,duration_min:60.0,avg_hr:166},{type:"Ride",distance_km:160.37,duration_min:357.4,avg_hr:139},{type:"Run",distance_km:21.11,duration_min:108.5,avg_hr:149},{type:"Swim",distance_km:1.0,duration_min:27.7,avg_hr:122},{type:"Ride",distance_km:41.91,duration_min:90.6,avg_hr:141},{type:"Run",distance_km:5.9,duration_min:28.2,avg_hr:152},{type:"Swim",distance_km:1.8,duration_min:33.8,avg_hr:116},{type:"Run",distance_km:16.0,duration_min:80.8,avg_hr:158},{type:"Run",distance_km:4.01,duration_min:19.9,avg_hr:150},{type:"Swim",distance_km:1.21,duration_min:28.0,avg_hr:148}]},
+    {week:"Jun 1", sessions:[{type:"Ride",distance_km:0.0,duration_min:64.8,avg_hr:141},{type:"Run",distance_km:10.05,duration_min:60.0,avg_hr:139},{type:"Swim",distance_km:2.3,duration_min:46.6,avg_hr:133},{type:"Run",distance_km:21.12,duration_min:98.1,avg_hr:161},{type:"Run",distance_km:15.41,duration_min:83.1,avg_hr:139},{type:"Ride",distance_km:0.0,duration_min:61.9,avg_hr:124},{type:"Run",distance_km:15.0,duration_min:79.6,avg_hr:142},{type:"Ride",distance_km:0.0,duration_min:63.0,avg_hr:153},{type:"Run",distance_km:15.0,duration_min:66.8,avg_hr:152},{type:"Run",distance_km:14.02,duration_min:62.6,avg_hr:161}]},
+    {week:"Jun 8", sessions:[{type:"Run",distance_km:13.59,duration_min:74.8,avg_hr:141},{type:"Ride",distance_km:0.0,duration_min:68.6,avg_hr:152},{type:"Ride",distance_km:0.0,duration_min:175.5,avg_hr:139},{type:"Run",distance_km:2.0,duration_min:10.2,avg_hr:156},{type:"Swim",distance_km:1.1,duration_min:20.4,avg_hr:104},{type:"Ride",distance_km:0.0,duration_min:75.9,avg_hr:132},{type:"Run",distance_km:21.1,duration_min:89.9,avg_hr:170},{type:"Ride",distance_km:0.0,duration_min:77.2,avg_hr:126},{type:"Swim",distance_km:2.2,duration_min:42.8,avg_hr:139},{type:"Swim",distance_km:1.9,duration_min:43.5,avg_hr:106},{type:"Run",distance_km:8.62,duration_min:44.4,avg_hr:143},{type:"Swim",distance_km:2.3,duration_min:47.4,avg_hr:138}]},
+    {week:"Jun 15", sessions:[{type:"Run",distance_km:15.43,duration_min:79.9,avg_hr:144},{type:"Ride",distance_km:30.04,duration_min:60.0,avg_hr:142},{type:"Swim",distance_km:2.3,duration_min:44.7,avg_hr:125},{type:"Swim",distance_km:2.2,duration_min:42.6,avg_hr:133},{type:"Swim",distance_km:1.9,duration_min:45.2,avg_hr:122},{type:"Ride",distance_km:50.01,duration_min:100.0,avg_hr:136},{type:"Run",distance_km:10.01,duration_min:39.8,avg_hr:174},{type:"Ride",distance_km:32.57,duration_min:75.0,avg_hr:118},{type:"Run",distance_km:10.0,duration_min:55.4,avg_hr:148},{type:"Swim",distance_km:1.1,duration_min:24.0,avg_hr:126},{type:"Ride",distance_km:0.0,duration_min:161.0,avg_hr:150},{type:"Run",distance_km:10.55,duration_min:44.7,avg_hr:178}]},
+    {week:"Jun 22", sessions:[{type:"Swim",distance_km:1.1,duration_min:21.6,avg_hr:105},{type:"Run",distance_km:10.0,duration_min:55.0,avg_hr:133},{type:"Run",distance_km:21.1,duration_min:119.4,avg_hr:142},{type:"Ride",distance_km:0.0,duration_min:30.9,avg_hr:132},{type:"Swim",distance_km:1.9,duration_min:45.3,avg_hr:137},{type:"Ride",distance_km:0.0,duration_min:114.3,avg_hr:134},{type:"Run",distance_km:3.86,duration_min:19.4,avg_hr:145},{type:"Swim",distance_km:2.1,duration_min:41.5,avg_hr:106},{type:"Ride",distance_km:0.0,duration_min:41.0,avg_hr:116},{type:"Ride",distance_km:0.0,duration_min:131.9,avg_hr:133},{type:"Run",distance_km:11.01,duration_min:53.7,avg_hr:154},{type:"Swim",distance_km:0.53,duration_min:12.5,avg_hr:141},{type:"Swim",distance_km:0.38,duration_min:10.4,avg_hr:116},{type:"Run",distance_km:10.0,duration_min:48.3,avg_hr:151}]},
+    {week:"Jun 29", sessions:[{type:"Swim",distance_km:1.0,duration_min:18.3,avg_hr:120},{type:"Run",distance_km:10.79,duration_min:58.5,avg_hr:144},{type:"Swim",distance_km:1.9,duration_min:42.0,avg_hr:138},{type:"Ride",distance_km:0.0,duration_min:76.6,avg_hr:131},{type:"Ride",distance_km:0.0,duration_min:89.5,avg_hr:112},{type:"Run",distance_km:10.03,duration_min:50.3,avg_hr:134},{type:"Swim",distance_km:1.2,duration_min:27.0,avg_hr:128},{type:"Swim",distance_km:1.0,duration_min:17.9,avg_hr:103},{type:"Ride",distance_km:32.54,duration_min:64.6,avg_hr:134},{type:"Run",distance_km:6.36,duration_min:26.3,avg_hr:163}]},
+    {week:"Jul 6", sessions:[{type:"Run",distance_km:9.99,duration_min:63.1,avg_hr:132},{type:"Ride",distance_km:0.0,duration_min:30.5,avg_hr:122},{type:"Swim",distance_km:1.05,duration_min:19.9,avg_hr:108},{type:"Ride",distance_km:0.0,duration_min:29.9,avg_hr:126},{type:"Run",distance_km:9.14,duration_min:45.4,avg_hr:153},{type:"Run",distance_km:16.4,duration_min:80.9,avg_hr:147},{type:"Run",distance_km:10.0,duration_min:53.6,avg_hr:141},{type:"Run",distance_km:11.87,duration_min:69.4,avg_hr:134}]},
+    {week:"Jul 13", sessions:[{type:"Ride",distance_km:0.0,duration_min:60.8,avg_hr:127},{type:"Run",distance_km:15.07,duration_min:78.9,avg_hr:146}], partial:true}
+  ];
+
+  // --- bar: session count per week ---
   (function() {
     const svg = document.getElementById('loadChart'), tooltip = document.getElementById('loadTooltip');
-    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
-    const maxV = Math.max(...wk.map(d=>Math.max(d.hours,d.chronic)))*1.15;
-    const n=wk.length, stepX=plotW/(n-1);
+    const W=1000,H=190,padL=28,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const counts = sessionWeeks.map(w => w.sessions.length);
+    const maxV = Math.max(...counts) * 1.15;
+    const n = sessionWeeks.length, bw = plotW/n*0.5, gap = plotW/n;
     for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
       svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
-      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'h'; svg.appendChild(t);
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV); svg.appendChild(t);
     }
-    function linePts(key){ return wk.map((d,i)=>({x:padL+i*stepX, y:padT+plotH-(d[key]/maxV)*plotH, d})); }
-    function drawLine(key, color){
-      const pts = linePts(key);
-      const d = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
-      svg.appendChild(el('path',{d, fill:'none', stroke:color, 'stroke-width':2.5, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
-      pts.forEach(p=>{
-        svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:4,fill:color}));
-        const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
-        hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%';
-          tooltip.textContent = p.d.week+': '+p.d[key]+'h ('+(key==='hours'?'acute':'chronic')+')'; });
-        hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
-        svg.appendChild(hit);
-      });
-    }
-    drawLine('chronic', 'var(--series-run)');
-    drawLine('hours', 'var(--orange)');
-    wk.forEach((d,i)=>{ const x=padL+i*stepX; const t=el('text',{x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=d.week; svg.appendChild(t); });
-  })();
-
-  // --- single-line: avg HR ---
-  (function() {
-    const svg = document.getElementById('hrChart'), tooltip = document.getElementById('hrTooltip');
-    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
-    const vals = wk.map(d=>d.hr);
-    const minV = Math.min(...vals)-5, maxV = Math.max(...vals)+5;
-    const n=wk.length, stepX=plotW/(n-1);
-    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
-      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
-      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round(minV+(g/3)*(maxV-minV)); svg.appendChild(t);
-    }
-    const pts = wk.map((d,i)=>({x:padL+i*stepX, y:padT+plotH-((d.hr-minV)/(maxV-minV))*plotH, d}));
-    const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
-    svg.appendChild(el('path',{d:pathD, fill:'none', stroke:'var(--orange)', 'stroke-width':3, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
-    pts.forEach(p=>{
-      svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:5,fill:'var(--orange)'}));
-      const t=el('text',{x:p.x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=p.d.week; svg.appendChild(t);
-      const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
-      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%'; tooltip.textContent=p.d.week+': '+p.d.hr+' bpm avg'; });
+    sessionWeeks.forEach((w,i)=>{
+      const cx = padL + gap*i + gap/2;
+      const bh = (w.sessions.length/maxV)*plotH;
+      const y = padT+plotH-bh;
+      svg.appendChild(el('rect',{x:cx-bw/2, y, width:bw, height:bh, rx:4, fill:'var(--orange)'}));
+      const t=el('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=w.week; svg.appendChild(t);
+      const hit = el('rect',{x:cx-gap/2, y:padT, width:gap, height:plotH, fill:'transparent', style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(y/H*100)+'%'; tooltip.textContent=w.week+': '+w.sessions.length+' sessions'; });
       hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
       svg.appendChild(hit);
     });
   })();
 
-  // --- bar: elevation ---
-  (function() {
-    const svg = document.getElementById('elevChart'), tooltip = document.getElementById('elevTooltip');
-    const W=1000,H=160,padL=36,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
-    const maxV = Math.max(...wk.map(d=>d.elev))*1.15;
-    const n=wk.length, bw = plotW/n*0.55, gap = plotW/n;
+  function drawStackedBar(svgId, tooltipId, series, height, unitFmt) {
+    const svg = document.getElementById(svgId), tooltip = document.getElementById(tooltipId);
+    const W=1000,H=height,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const totals = sessionWeeks.map(w => series.reduce((s,ser)=>s+ser.value(w),0));
+    const maxV = Math.max(...totals)*1.1 || 1;
+    const n=sessionWeeks.length, bw = plotW/n*0.55, gap = plotW/n;
     for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
       svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
-      const t=el('text',{x:padL-8,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'m'; svg.appendChild(t);
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=unitFmt((g/3)*maxV); svg.appendChild(t);
     }
-    wk.forEach((d,i)=>{
+    sessionWeeks.forEach((w,i)=>{
       const cx = padL + gap*i + gap/2;
-      const bh = (d.elev/maxV)*plotH;
-      const y = padT+plotH-bh;
-      svg.appendChild(el('rect',{x:cx-bw/2, y, width:bw, height:bh, rx:4, fill:'var(--series-run)'}));
-      const t=el('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=d.week; svg.appendChild(t);
-      const hit = el('rect',{x:cx-gap/2, y:padT, width:gap, height:plotH, fill:'transparent', style:'cursor:pointer'});
-      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(y/H*100)+'%'; tooltip.textContent=d.week+': '+d.elev+'m gain'; });
+      let yCursor = padT+plotH;
+      series.forEach(ser=>{
+        const v = ser.value(w);
+        const bh = (v/maxV)*plotH;
+        yCursor -= bh;
+        const rect = el('rect',{x:cx-bw/2, y:yCursor, width:bw, height:Math.max(bh-1,0), fill:ser.color});
+        svg.appendChild(rect);
+        if (v > 0) {
+          rect.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(yCursor/H*100)+'%'; tooltip.textContent=w.week+' '+ser.label+': '+unitFmt(v); });
+          rect.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+        }
+      });
+      const t=el('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=w.week; svg.appendChild(t);
+    });
+  }
+
+  // --- Discipline mix: stacked hours by sport ---
+  drawStackedBar('mixChart', 'mixTooltip', [
+    {label:'Run', color:'var(--series-run)', value: w => w.sessions.filter(s=>s.type==='Run').reduce((s,x)=>s+x.duration_min,0)/60},
+    {label:'Ride', color:'var(--series-ride)', value: w => w.sessions.filter(s=>s.type==='Ride').reduce((s,x)=>s+x.duration_min,0)/60},
+    {label:'Swim', color:'var(--series-swim)', value: w => w.sessions.filter(s=>s.type==='Swim').reduce((s,x)=>s+x.duration_min,0)/60},
+  ], 190, v => v.toFixed(1)+'h');
+
+  // --- Easy/hard split: run minutes by intensity bucket ---
+  function runBucketMinutes(w, bucket) {
+    return w.sessions.filter(s=>s.type==='Run').reduce((sum,s)=>{
+      const pct = s.avg_hr / MAX_HR;
+      const b = pct < 0.78 ? 'easy' : (pct >= 0.87 ? 'hard' : 'mid');
+      return b === bucket ? sum + s.duration_min : sum;
+    }, 0);
+  }
+  drawStackedBar('splitChart', 'splitTooltip', [
+    {label:'Easy', color:'var(--text-secondary)', value: w => runBucketMinutes(w,'easy') + runBucketMinutes(w,'mid')},
+    {label:'Hard', color:'var(--orange)', value: w => runBucketMinutes(w,'hard')},
+  ], 190, v => Math.round(v)+'m');
+
+  // --- Longest run per week (line, with 28-32km target band) ---
+  (function() {
+    const svg = document.getElementById('longChart'), tooltip = document.getElementById('longTooltip');
+    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const longest = sessionWeeks.map(w => Math.max(0, ...w.sessions.filter(s=>s.type==='Run').map(s=>s.distance_km)));
+    const maxV = Math.max(...longest, 32) * 1.1;
+    const n=sessionWeeks.length, stepX=plotW/(n-1);
+    // target band 28-32km
+    const yTop = padT+plotH-(32/maxV)*plotH, yBot = padT+plotH-(28/maxV)*plotH;
+    svg.appendChild(el('rect',{x:padL, y:yTop, width:plotW, height:yBot-yTop, fill:'var(--series-ride)', opacity:0.12}));
+    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
+      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'km'; svg.appendChild(t);
+    }
+    const pts = longest.map((v,i)=>({x:padL+i*stepX, y:padT+plotH-(v/maxV)*plotH, v, week:sessionWeeks[i].week}));
+    const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    svg.appendChild(el('path',{d:pathD, fill:'none', stroke:'var(--orange)', 'stroke-width':3, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    pts.forEach(p=>{
+      svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:5,fill:'var(--orange)'}));
+      const t=el('text',{x:p.x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=p.week; svg.appendChild(t);
+      const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%'; tooltip.textContent=p.week+': '+p.v.toFixed(1)+'km longest run'; });
       hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
       svg.appendChild(hit);
     });

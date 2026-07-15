@@ -239,11 +239,7 @@
 
   <div class="grid two">
     <div class="card">
-      <h2>Training Load &mdash; Acute vs. Chronic</h2>
-      <div class="legend">
-        <span><i style="background: var(--orange);"></i>Acute (weekly)</span>
-        <span><i style="background: var(--series-run);"></i>Chronic (4-wk avg)</span>
-      </div>
+      <h2>Session Count &mdash; Weekly</h2>
       <div class="chart-wrap">
         <svg class="chart" id="loadChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
         <div class="tooltip" id="loadTooltip"></div>
@@ -403,50 +399,10 @@
 })();
 
 (function() {
-  const wk = [
-    {week:"May 18", hours:2.4, chronic:2.4, elev:135, hr:160},
-    {week:"May 25", hours:13.9, chronic:8.1, elev:1312, hr:145},
-    {week:"Jun 1", hours:11.4, chronic:9.2, elev:302, hr:145},
-    {week:"Jun 8", hours:12.8, chronic:10.1, elev:133, hr:140},
-    {week:"Jun 15", hours:12.9, chronic:12.8, elev:324, hr:142},
-    {week:"Jun 22", hours:12.4, chronic:12.4, elev:169, hr:134},
-    {week:"Jun 29", hours:7.8, chronic:11.5, elev:167, hr:130},
-    {week:"Jul 6", hours:6.5, chronic:9.9, elev:153, hr:137},
-    {week:"Jul 13", hours:2.3, chronic:7.3, elev:31, hr:137, partial:true}
-  ];
   const ns = "http://www.w3.org/2000/svg";
   function el(tag, attrs) { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
-  // --- dual-line: acute vs chronic load ---
-  (function() {
-    const svg = document.getElementById('loadChart'), tooltip = document.getElementById('loadTooltip');
-    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
-    const maxV = Math.max(...wk.map(d=>Math.max(d.hours,d.chronic)))*1.15;
-    const n=wk.length, stepX=plotW/(n-1);
-    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
-      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
-      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'h'; svg.appendChild(t);
-    }
-    function linePts(key){ return wk.map((d,i)=>({x:padL+i*stepX, y:padT+plotH-(d[key]/maxV)*plotH, d})); }
-    function drawLine(key, color){
-      const pts = linePts(key);
-      const d = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
-      svg.appendChild(el('path',{d, fill:'none', stroke:color, 'stroke-width':2.5, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
-      pts.forEach(p=>{
-        svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:4,fill:color}));
-        const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
-        hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%';
-          tooltip.textContent = p.d.week+': '+p.d[key]+'h ('+(key==='hours'?'acute':'chronic')+')'; });
-        hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
-        svg.appendChild(hit);
-      });
-    }
-    drawLine('chronic', 'var(--series-run)');
-    drawLine('hours', 'var(--orange)');
-    wk.forEach((d,i)=>{ const x=padL+i*stepX; const t=el('text',{x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=d.week; svg.appendChild(t); });
-  })();
-
-  // Session-level data (same source as Training History) for the three charts below.
+  // Session-level data (same source as Training History) for the four charts below.
   // MAX_HR is the confirmed observed max (207bpm) from the full 6-month analysis —
   // real, not estimated — used to classify easy (<78%) vs hard (>=87%) run effort.
   const MAX_HR = 207;
@@ -461,6 +417,30 @@
     {week:"Jul 6", sessions:[{type:"Run",distance_km:9.99,duration_min:63.1,avg_hr:132},{type:"Ride",distance_km:0.0,duration_min:30.5,avg_hr:122},{type:"Swim",distance_km:1.05,duration_min:19.9,avg_hr:108},{type:"Ride",distance_km:0.0,duration_min:29.9,avg_hr:126},{type:"Run",distance_km:9.14,duration_min:45.4,avg_hr:153},{type:"Run",distance_km:16.4,duration_min:80.9,avg_hr:147},{type:"Run",distance_km:10.0,duration_min:53.6,avg_hr:141},{type:"Run",distance_km:11.87,duration_min:69.4,avg_hr:134}]},
     {week:"Jul 13", sessions:[{type:"Ride",distance_km:0.0,duration_min:60.8,avg_hr:127},{type:"Run",distance_km:15.07,duration_min:78.9,avg_hr:146}], partial:true}
   ];
+
+  // --- bar: session count per week ---
+  (function() {
+    const svg = document.getElementById('loadChart'), tooltip = document.getElementById('loadTooltip');
+    const W=1000,H=190,padL=28,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const counts = sessionWeeks.map(w => w.sessions.length);
+    const maxV = Math.max(...counts) * 1.15;
+    const n = sessionWeeks.length, bw = plotW/n*0.5, gap = plotW/n;
+    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
+      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV); svg.appendChild(t);
+    }
+    sessionWeeks.forEach((w,i)=>{
+      const cx = padL + gap*i + gap/2;
+      const bh = (w.sessions.length/maxV)*plotH;
+      const y = padT+plotH-bh;
+      svg.appendChild(el('rect',{x:cx-bw/2, y, width:bw, height:bh, rx:4, fill:'var(--orange)'}));
+      const t=el('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=w.week; svg.appendChild(t);
+      const hit = el('rect',{x:cx-gap/2, y:padT, width:gap, height:plotH, fill:'transparent', style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(y/H*100)+'%'; tooltip.textContent=w.week+': '+w.sessions.length+' sessions'; });
+      hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+      svg.appendChild(hit);
+    });
+  })();
 
   function drawStackedBar(svgId, tooltipId, series, height, unitFmt) {
     const svg = document.getElementById(svgId), tooltip = document.getElementById(tooltipId);
