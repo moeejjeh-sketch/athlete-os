@@ -200,6 +200,17 @@
     </div>
   </div>
 
+  <div class="grid one">
+    <div class="card">
+      <h2>Total Sleep &mdash; Nightly</h2>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Dashed line: your usual ~7h baseline</div>
+      <div class="chart-wrap">
+        <svg class="chart" id="totalSleepChart" viewBox="0 0 1000 170" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="totalSleepTooltip"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="grid three">
     <div class="card">
       <h2>Sleep Score</h2>
@@ -515,6 +526,38 @@
       svg.appendChild(hit);
     });
   }
+  // --- Total sleep per night: bar chart with 7h reference line ---
+  (function() {
+    const svg = document.getElementById('totalSleepChart'), tooltip = document.getElementById('totalSleepTooltip');
+    const W=1000,H=170,padL=30,padR=10,padT=10,padB=24, plotW=W-padL-padR, plotH=H-padT-padB;
+    const totals = nights.map(n => n.noData ? null : (n.deep+n.light+n.rem)/60);
+    const validTotals = totals.filter(v=>v!=null);
+    const maxV = Math.max(...validTotals, 7) * 1.15;
+    const n = nights.length, bw = plotW/n*0.5, gap = plotW/n;
+    const yRef = padT+plotH-(7/maxV)*plotH;
+    svg.appendChild(el2('line',{x1:padL, x2:W-padR, y1:yRef, y2:yRef, stroke:'var(--series-ride)', 'stroke-width':2, 'stroke-dasharray':'5,4', opacity:0.6}));
+    for (let g=0; g<=2; g++){ const y=padT+plotH-(g/2)*plotH;
+      svg.appendChild(el2('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el2('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':9.5,fill:'var(--text-muted)'}); t.textContent=((g/2)*maxV).toFixed(1)+'h'; svg.appendChild(t);
+    }
+    nights.forEach((night,i)=>{
+      const cx = padL + gap*i + gap/2;
+      const t=el2('text',{x:cx,y:H-4,'text-anchor':'middle','font-size':10,fill:'var(--text-muted)'}); t.textContent=night.date.replace('Jul ',''); svg.appendChild(t);
+      if (night.noData) {
+        const t2=el2('text',{x:cx,y:padT+plotH/2,'text-anchor':'middle','font-size':9.5,fill:'var(--text-muted)'}); t2.textContent='no data'; svg.appendChild(t2);
+        return;
+      }
+      const v = (night.deep+night.light+night.rem)/60;
+      const bh = (v/maxV)*plotH;
+      const y = padT+plotH-bh;
+      svg.appendChild(el2('rect',{x:cx-bw/2, y, width:bw, height:bh, rx:4, fill:'var(--orange)'}));
+      const hit = el2('rect',{x:cx-gap/2, y:padT, width:gap, height:plotH, fill:'transparent', style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(y/H*100)+'%'; tooltip.textContent=night.date+': '+v.toFixed(1)+'h'; });
+      hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+      svg.appendChild(hit);
+    });
+  })();
+
   drawNightLine('sleepScoreChart', 'sleepScoreTooltip', 'score', '', 8, 0);
   drawNightLine('restingHrChart', 'restingHrTooltip', 'rhr', ' bpm', 4, 0);
   drawNightLine('hrvChart', 'hrvTooltip', 'hrv', ' ms', 5, 0);
