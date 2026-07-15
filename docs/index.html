@@ -281,6 +281,50 @@
     </div>
   </div>
 
+  <div class="grid two">
+    <div class="card">
+      <h2>Easy/Hard Split &mdash; Weekly (Bike)</h2>
+      <div class="legend">
+        <span><i style="background: var(--text-secondary);"></i>Easy</span>
+        <span><i style="background: var(--orange);"></i>Hard</span>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" id="splitChartBike" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="splitTooltipBike"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Longest Ride &mdash; Weekly Progression</h2>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">By duration, not distance &mdash; many rides log 0km (indoor trainer)</div>
+      <div class="chart-wrap">
+        <svg class="chart" id="longChartBike" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="longTooltipBike"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Easy/Hard Split &mdash; Weekly (Swim)</h2>
+      <div class="legend">
+        <span><i style="background: var(--text-secondary);"></i>Easy</span>
+        <span><i style="background: var(--orange);"></i>Hard</span>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" id="splitChartSwim" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="splitTooltipSwim"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Longest Swim &mdash; Weekly Progression</h2>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Target: 3.8km (Ironman Hamburg swim distance)</div>
+      <div class="chart-wrap">
+        <svg class="chart" id="longChartSwim" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="longTooltipSwim"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="grid one">
     <div class="card">
       <h2>Training History</h2>
@@ -477,32 +521,43 @@
     {label:'Swim', color:'var(--series-swim)', value: w => w.sessions.filter(s=>s.type==='Swim').reduce((s,x)=>s+x.duration_min,0)/60},
   ], 190, v => v.toFixed(1)+'h');
 
-  // --- Easy/hard split: run minutes by intensity bucket ---
-  function runBucketMinutes(w, bucket) {
-    return w.sessions.filter(s=>s.type==='Run').reduce((sum,s)=>{
+  // --- Easy/hard split: minutes by intensity bucket, generalized by discipline ---
+  function bucketMinutes(w, type, bucket) {
+    return w.sessions.filter(s=>s.type===type).reduce((sum,s)=>{
+      if (!s.avg_hr) return sum;
       const pct = s.avg_hr / MAX_HR;
       const b = pct < 0.78 ? 'easy' : (pct >= 0.87 ? 'hard' : 'mid');
       return b === bucket ? sum + s.duration_min : sum;
     }, 0);
   }
-  drawStackedBar('splitChart', 'splitTooltip', [
-    {label:'Easy', color:'var(--text-secondary)', value: w => runBucketMinutes(w,'easy') + runBucketMinutes(w,'mid')},
-    {label:'Hard', color:'var(--orange)', value: w => runBucketMinutes(w,'hard')},
-  ], 190, v => Math.round(v)+'m');
+  function drawSplitChart(svgId, tooltipId, type) {
+    drawStackedBar(svgId, tooltipId, [
+      {label:'Easy', color:'var(--text-secondary)', value: w => bucketMinutes(w,type,'easy') + bucketMinutes(w,type,'mid')},
+      {label:'Hard', color:'var(--orange)', value: w => bucketMinutes(w,type,'hard')},
+    ], 190, v => Math.round(v)+'m');
+  }
+  drawSplitChart('splitChart', 'splitTooltip', 'Run');
+  drawSplitChart('splitChartBike', 'splitTooltipBike', 'Ride');
+  drawSplitChart('splitChartSwim', 'splitTooltipSwim', 'Swim');
 
-  // --- Longest run per week (line, with 28-32km target band) ---
-  (function() {
-    const svg = document.getElementById('longChart'), tooltip = document.getElementById('longTooltip');
+  // --- Longest session per week (line), generalized by discipline + metric ---
+  function drawLongestChart(svgId, tooltipId, type, metricKey, unit, targetBand) {
+    const svg = document.getElementById(svgId), tooltip = document.getElementById(tooltipId);
     const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
-    const longest = sessionWeeks.map(w => Math.max(0, ...w.sessions.filter(s=>s.type==='Run').map(s=>s.distance_km)));
-    const maxV = Math.max(...longest, 32) * 1.1;
+    const longest = sessionWeeks.map(w => Math.max(0, ...w.sessions.filter(s=>s.type===type).map(s=>s[metricKey])));
+    const bandMax = targetBand ? targetBand[1] : 0;
+    const maxV = Math.max(...longest, bandMax) * 1.1 || 1;
     const n=sessionWeeks.length, stepX=plotW/(n-1);
-    // target band 28-32km
-    const yTop = padT+plotH-(32/maxV)*plotH, yBot = padT+plotH-(28/maxV)*plotH;
-    svg.appendChild(el('rect',{x:padL, y:yTop, width:plotW, height:yBot-yTop, fill:'var(--series-ride)', opacity:0.12}));
+    if (targetBand && targetBand[0] === targetBand[1]) {
+      const y = padT+plotH-(targetBand[0]/maxV)*plotH;
+      svg.appendChild(el('line',{x1:padL, x2:W-padR, y1:y, y2:y, stroke:'var(--series-ride)', 'stroke-width':2, 'stroke-dasharray':'5,4', opacity:0.6}));
+    } else if (targetBand) {
+      const yTop = padT+plotH-(targetBand[1]/maxV)*plotH, yBot = padT+plotH-(targetBand[0]/maxV)*plotH;
+      svg.appendChild(el('rect',{x:padL, y:yTop, width:plotW, height:yBot-yTop, fill:'var(--series-ride)', opacity:0.12}));
+    }
     for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
       svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
-      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'km'; svg.appendChild(t);
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+unit; svg.appendChild(t);
     }
     const pts = longest.map((v,i)=>({x:padL+i*stepX, y:padT+plotH-(v/maxV)*plotH, v, week:sessionWeeks[i].week}));
     const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
@@ -511,11 +566,14 @@
       svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:5,fill:'var(--orange)'}));
       const t=el('text',{x:p.x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=p.week; svg.appendChild(t);
       const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
-      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%'; tooltip.textContent=p.week+': '+p.v.toFixed(1)+'km longest run'; });
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%'; tooltip.textContent=p.week+': '+p.v.toFixed(1)+unit; });
       hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
       svg.appendChild(hit);
     });
-  })();
+  }
+  drawLongestChart('longChart', 'longTooltip', 'Run', 'distance_km', 'km', [28,32]);
+  drawLongestChart('longChartBike', 'longTooltipBike', 'Ride', 'duration_min', 'm', null);
+  drawLongestChart('longChartSwim', 'longTooltipSwim', 'Swim', 'distance_km', 'km', [3.8,3.8]);
 })();
 
 (function() {
