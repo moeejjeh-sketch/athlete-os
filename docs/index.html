@@ -178,41 +178,6 @@
   <button id="gateSubmit">Unlock</button>
   <div class="err" id="gateErr"></div>
 </div>
-<script>
-(async function() {
-  const HASH = "6ddac8af1f777d2b1e27af01ff6899456ec4fd18c9b7b5f077993e8f630e33a0";
-  async function sha256(text) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  const gate = document.getElementById('gate');
-  const content = document.getElementById('gateContent');
-  const input = document.getElementById('gateInput');
-  const err = document.getElementById('gateErr');
-
-  async function tryUnlock(code) {
-    if (await sha256(code) === HASH) {
-      localStorage.setItem('athleteos_unlocked', HASH);
-      gate.style.display = 'none';
-      content.style.display = 'block';
-      return true;
-    }
-    return false;
-  }
-
-  const saved = localStorage.getItem('athleteos_unlocked');
-  if (saved === HASH) { gate.style.display = 'none'; content.style.display = 'block'; }
-
-  document.getElementById('gateSubmit').addEventListener('click', async () => {
-    if (!(await tryUnlock(input.value))) { err.textContent = 'Wrong passcode'; input.value = ''; }
-  });
-  input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      if (!(await tryUnlock(input.value))) { err.textContent = 'Wrong passcode'; input.value = ''; }
-    }
-  });
-})();
-</script>
 <div id="gateContent">
 <div class="wrap">
 
@@ -738,6 +703,42 @@
   pPrev.addEventListener('click', () => { if (pIdx > 0) { pIdx--; renderPlan(); } });
   pNext.addEventListener('click', () => { if (pIdx < plannedWeeks.length - 1) { pIdx++; renderPlan(); } });
   renderPlan();
+})();
+</script>
+
+<script>
+(async function() {
+  const HASH = "6ddac8af1f777d2b1e27af01ff6899456ec4fd18c9b7b5f077993e8f630e33a0";
+  async function sha256(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  const gate = document.getElementById('gate');
+  const content = document.getElementById('gateContent');
+  const input = document.getElementById('gateInput');
+  const err = document.getElementById('gateErr');
+
+  async function tryUnlock(code) {
+    if (await sha256(code) === HASH) {
+      localStorage.setItem('athleteos_unlocked', HASH);
+      gate.style.display = 'none';
+      content.style.display = 'block';
+      return true;
+    }
+    return false;
+  }
+
+  const saved = localStorage.getItem('athleteos_unlocked');
+  if (saved === HASH) { gate.style.display = 'none'; content.style.display = 'block'; }
+
+  document.getElementById('gateSubmit').addEventListener('click', async () => {
+    if (!(await tryUnlock(input.value))) { err.textContent = 'Wrong passcode'; input.value = ''; }
+  });
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      if (!(await tryUnlock(input.value))) { err.textContent = 'Wrong passcode'; input.value = ''; }
+    }
+  });
 })();
 </script>
 
