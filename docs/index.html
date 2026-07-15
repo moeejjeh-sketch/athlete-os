@@ -155,30 +155,9 @@
     .insight-grid { grid-template-columns: 1fr; }
     .skills-grid { grid-template-columns: repeat(2, 1fr); }
   }
-  #gate {
-    position: fixed; inset: 0; background: var(--bg); z-index: 100;
-    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
-  }
-  #gate input {
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
-    color: var(--text-primary); padding: 12px 16px; font-size: 15px; width: 220px; text-align: center;
-  }
-  #gate button {
-    background: var(--orange); color: #1a0e05; border: none; border-radius: 10px;
-    padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer;
-  }
-  #gate .err { color: var(--status-critical); font-size: 12.5px; min-height: 16px; }
-  #gateContent { display: none; }
 </style>
 </head>
 <body>
-<div id="gate">
-  <div style="font-size:15px; color: var(--text-secondary);">Enter passcode</div>
-  <input type="password" id="gateInput" autocomplete="off">
-  <button id="gateSubmit">Unlock</button>
-  <div class="err" id="gateErr"></div>
-</div>
-<div id="gateContent">
 <div class="wrap">
 
   <header class="page">
@@ -706,42 +685,5 @@
 })();
 </script>
 
-<script>
-(async function() {
-  const HASH = "6ddac8af1f777d2b1e27af01ff6899456ec4fd18c9b7b5f077993e8f630e33a0";
-  async function sha256(text) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  const gate = document.getElementById('gate');
-  const content = document.getElementById('gateContent');
-  const input = document.getElementById('gateInput');
-  const err = document.getElementById('gateErr');
-
-  async function tryUnlock(code) {
-    if (await sha256(code) === HASH) {
-      localStorage.setItem('athleteos_unlocked', HASH);
-      gate.style.display = 'none';
-      content.style.display = 'block';
-      return true;
-    }
-    return false;
-  }
-
-  const saved = localStorage.getItem('athleteos_unlocked');
-  if (saved === HASH) { gate.style.display = 'none'; content.style.display = 'block'; }
-
-  document.getElementById('gateSubmit').addEventListener('click', async () => {
-    if (!(await tryUnlock(input.value))) { err.textContent = 'Wrong passcode'; input.value = ''; }
-  });
-  input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      if (!(await tryUnlock(input.value))) { err.textContent = 'Wrong passcode'; input.value = ''; }
-    }
-  });
-})();
-</script>
-
-</div>
 </body>
 </html>
