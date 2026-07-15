@@ -1,2 +1,4 @@
 .env
 .claude/scheduled_tasks.lock
+.claude/settings.local.json
+.claude/skills/refresh-dashboard/last_run.log
