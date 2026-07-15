@@ -22,6 +22,7 @@
     --series-run: #3987e5;
     --series-ride: #008300;
     --series-swim: #d55181;
+    --series-4: #c98500;
 
     /* status palette, fixed, dark-surface steps */
     --status-good: #0ca30c;
@@ -180,6 +181,46 @@
       <div class="label">This week planned</div>
       <div class="value">8.7<span class="unit">hrs</span></div>
       <div class="label">Up from 6.5h last week</div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Sleep Stages &mdash; Last 7 Nights</h2>
+      <div class="legend">
+        <span><i style="background: var(--series-run);"></i>Deep</span>
+        <span><i style="background: var(--series-ride);"></i>Light</span>
+        <span><i style="background: var(--series-swim);"></i>REM</span>
+        <span><i style="background: var(--series-4);"></i>Awake</span>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" id="sleepStagesChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="sleepStagesTooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid three">
+    <div class="card">
+      <h2>Sleep Score</h2>
+      <div class="chart-wrap">
+        <svg class="chart" id="sleepScoreChart" viewBox="0 0 1000 170" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="sleepScoreTooltip"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Resting HR</h2>
+      <div class="chart-wrap">
+        <svg class="chart" id="restingHrChart" viewBox="0 0 1000 170" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="restingHrTooltip"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>HRV</h2>
+      <div class="chart-wrap">
+        <svg class="chart" id="hrvChart" viewBox="0 0 1000 170" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="hrvTooltip"></div>
+      </div>
     </div>
   </div>
 
@@ -396,6 +437,89 @@
 </div>
 
 <script>
+(function() {
+  // Real Garmin data, last 7 nights with actual recordings (07-09 to 07-15).
+  // Earlier nights in this window had no watch data synced - omitted rather
+  // than shown as false zeros.
+  const nights = [
+    {date:"Jul 9",  deep:120, light:99,  rem:35,  awake:7,  score:55, rhr:48, hrv:60.0, hrvStatus:"NONE"},
+    {date:"Jul 10", deep:58,  light:128, rem:60,  awake:1,  score:55, rhr:52, hrv:56.0, hrvStatus:"NONE"},
+    {date:"Jul 11", deep:0,   light:0,   rem:0,   awake:0,  score:null, rhr:null, hrv:null, hrvStatus:null, noData:true},
+    {date:"Jul 12", deep:62,  light:108, rem:60,  awake:0,  score:51, rhr:54, hrv:53.0, hrvStatus:"NONE"},
+    {date:"Jul 13", deep:50,  light:211, rem:64,  awake:17, score:67, rhr:53, hrv:57.0, hrvStatus:"BALANCED"},
+    {date:"Jul 14", deep:82,  light:364, rem:105, awake:12, score:91, rhr:49, hrv:59.0, hrvStatus:"BALANCED"},
+    {date:"Jul 15", deep:64,  light:311, rem:122, awake:10, score:86, rhr:52, hrv:50.0, hrvStatus:"BALANCED"},
+  ];
+  const ns2 = "http://www.w3.org/2000/svg";
+  function el2(tag, attrs) { const e = document.createElementNS(ns2, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  // --- Sleep stages: stacked bar in hours ---
+  (function() {
+    const svg = document.getElementById('sleepStagesChart'), tooltip = document.getElementById('sleepStagesTooltip');
+    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const totals = nights.map(n => (n.deep+n.light+n.rem+n.awake)/60);
+    const maxV = Math.max(...totals) * 1.1 || 1;
+    const n=nights.length, bw = plotW/n*0.5, gap = plotW/n;
+    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
+      svg.appendChild(el2('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el2('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=((g/3)*maxV).toFixed(1)+'h'; svg.appendChild(t);
+    }
+    const series = [
+      {key:'deep', color:'var(--series-run)', label:'Deep'},
+      {key:'light', color:'var(--series-ride)', label:'Light'},
+      {key:'rem', color:'var(--series-swim)', label:'REM'},
+      {key:'awake', color:'var(--series-4)', label:'Awake'},
+    ];
+    nights.forEach((night,i)=>{
+      const cx = padL + gap*i + gap/2;
+      if (night.noData) {
+        const t2=el2('text',{x:cx,y:padT+plotH/2,'text-anchor':'middle','font-size':10,fill:'var(--text-muted)'}); t2.textContent='no data'; svg.appendChild(t2);
+      } else {
+        let yCursor = padT+plotH;
+        series.forEach(s=>{
+          const v = night[s.key]/60;
+          const bh = (v/maxV)*plotH;
+          yCursor -= bh;
+          const rect = el2('rect',{x:cx-bw/2, y:yCursor, width:bw, height:Math.max(bh-0.5,0), fill:s.color});
+          svg.appendChild(rect);
+          rect.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(yCursor/H*100)+'%'; tooltip.textContent=night.date+' '+s.label+': '+night[s.key]+'m'; });
+          rect.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+        });
+      }
+      const t=el2('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=night.date; svg.appendChild(t);
+    });
+  })();
+
+  // --- Single-metric line charts: sleep score, resting HR, HRV ---
+  function drawNightLine(svgId, tooltipId, key, unit, minPad, decimals) {
+    const svg = document.getElementById(svgId), tooltip = document.getElementById(tooltipId);
+    const W=1000,H=170,padL=30,padR=10,padT=10,padB=24, plotW=W-padL-padR, plotH=H-padT-padB;
+    const vals = nights.filter(n=>n[key]!=null).map(n=>n[key]);
+    const minV = Math.min(...vals) - minPad, maxV = Math.max(...vals) + minPad;
+    const n = nights.length, stepX = plotW/(n-1);
+    for (let g=0; g<=2; g++){ const y=padT+plotH-(g/2)*plotH;
+      svg.appendChild(el2('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el2('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':9.5,fill:'var(--text-muted)'}); t.textContent=(minV+(g/2)*(maxV-minV)).toFixed(decimals); svg.appendChild(t);
+    }
+    const pts = nights.map((night,i)=>({x:padL+i*stepX, y: night[key]!=null ? padT+plotH-((night[key]-minV)/(maxV-minV))*plotH : null, v:night[key], date:night.date}));
+    const validPts = pts.filter(p=>p.y!=null);
+    const pathD = validPts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    svg.appendChild(el2('path',{d:pathD, fill:'none', stroke:'var(--orange)', 'stroke-width':2.5, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    pts.forEach(p=>{
+      const t=el2('text',{x:p.x,y:H-4,'text-anchor':'middle','font-size':10,fill:'var(--text-muted)'}); t.textContent=p.date.replace('Jul ',''); svg.appendChild(t);
+      if (p.y==null) return;
+      svg.appendChild(el2('circle',{cx:p.x,cy:p.y,r:4.5,fill:'var(--orange)'}));
+      const hit = el2('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%'; tooltip.textContent=p.date+': '+p.v+unit; });
+      hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+      svg.appendChild(hit);
+    });
+  }
+  drawNightLine('sleepScoreChart', 'sleepScoreTooltip', 'score', '', 8, 0);
+  drawNightLine('restingHrChart', 'restingHrTooltip', 'rhr', ' bpm', 4, 0);
+  drawNightLine('hrvChart', 'hrvTooltip', 'hrv', ' ms', 5, 0);
+})();
+
 (function() {
   const data = [
     {week: "May 25", hours: 13.9}, {week: "Jun 1", hours: 11.4}, {week: "Jun 8", hours: 12.8},
