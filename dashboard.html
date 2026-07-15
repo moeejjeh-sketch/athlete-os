@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Athlete OS</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14110d;
+    --surface-1: #1d1912;
+    --surface-2: #262019;
+    --border: #362d20;
+    --text-primary: #f5f1ea;
+    --text-secondary: #b6a996;
+    --text-muted: #857a68;
+
+    --orange: #ff7a33;
+    --orange-dim: #cc5f24;
+
+    /* fixed-order categorical (validated CVD-safe order — real data series only) */
+    --series-run: #3987e5;
+    --series-ride: #008300;
+    --series-swim: #d55181;
+
+    /* status palette, fixed, dark-surface steps */
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-critical: #d03b3b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    padding: 32px 20px 64px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header.page { margin-bottom: 24px; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header.page h1 { font-size: 24px; margin: 0; letter-spacing: -0.02em; }
+  header.page h1 span { color: var(--orange); }
+  header.page .sub { color: var(--text-muted); font-size: 13.5px; }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+  .grid.two { grid-template-columns: 1.3fr 1fr; }
+  .grid.three { grid-template-columns: repeat(3, 1fr); }
+  .grid.one { grid-template-columns: 1fr; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .card h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+
+  .stat-tile { display: flex; flex-direction: column; justify-content: space-between; min-height: 108px; }
+  .stat-tile .value { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; margin: 6px 0 4px; color: var(--orange); }
+  .stat-tile .value .unit { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-left: 4px; }
+  .stat-tile .label { font-size: 12.5px; color: var(--text-secondary); }
+
+  .readiness { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--status-good); color: #0a1a0a;
+    padding: 8px 16px; border-radius: 999px;
+    font-weight: 800; font-size: 15px; letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #0a1a0a; }
+  .readiness .details { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .readiness .details b { color: var(--text-primary); }
+
+  table.sessions { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.sessions th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0 8px 8px 0; font-weight: 600; }
+  table.sessions td { padding: 9px 8px 9px 0; border-top: 1px solid var(--border); vertical-align: top; }
+  table.sessions tr:first-child td { border-top: none; }
+  table.sessions .day { font-weight: 700; white-space: nowrap; color: var(--text-primary); }
+  table.sessions .metric { font-weight: 600; color: var(--orange); white-space: nowrap; }
+  table.sessions .dur { color: var(--text-secondary); white-space: nowrap; }
+  table.sessions .est { color: var(--text-muted); font-size: 11px; font-weight: 400; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: 0.02em; margin-left: 6px; }
+  .tag.hard { background: rgba(255,122,51,0.16); color: var(--orange); }
+  .tag.easy { background: rgba(182,169,150,0.14); color: var(--text-secondary); }
+  .tag.rest { background: var(--surface-2); color: var(--text-muted); }
+  tr.breakdown td { border-top: none; padding: 0 8px 12px 0; }
+  .segments { display: flex; flex-wrap: wrap; gap: 6px; }
+  .segment {
+    background: var(--surface-2); border-radius: 7px; padding: 5px 10px;
+    font-size: 11.5px; color: var(--text-secondary); white-space: nowrap;
+  }
+  .segment b { color: var(--text-primary); font-weight: 600; }
+  .segment.hard-seg { background: rgba(255,122,51,0.12); color: var(--orange); }
+  .segment.hard-seg b { color: var(--orange); }
+
+  .chart-wrap { position: relative; }
+  svg.chart { width: 100%; height: 190px; overflow: visible; }
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: var(--text-primary); color: var(--bg);
+    font-size: 12px; padding: 6px 10px; border-radius: 8px;
+    transform: translate(-50%, -110%); transition: opacity .1s;
+    white-space: nowrap; z-index: 5; font-weight: 600;
+  }
+
+  .coaching-overview { font-size: 14px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px; }
+  .insight-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
+  .insight { background: var(--surface-2); border-left: 3px solid var(--orange); border-radius: 8px; padding: 12px 14px; }
+  .insight .fw { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--orange); font-weight: 700; margin-bottom: 4px; }
+  .insight p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+  .tips { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.7; color: var(--text-secondary); }
+  .tips li::marker { color: var(--orange); }
+
+  .skills-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .skill-tile { background: var(--surface-2); border-radius: 10px; padding: 12px; }
+  .skill-tile .name { font-weight: 700; font-size: 12.5px; margin-bottom: 3px; color: var(--orange); }
+  .skill-tile .desc { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+
+  /* history browser */
+  .history-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .history-nav .week-label { font-size: 15px; font-weight: 700; }
+  .history-nav .week-label .hrs { color: var(--orange); font-weight: 700; }
+  .history-nav .btns { display: flex; gap: 8px; }
+  .history-nav button {
+    background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  .history-nav button:hover { border-color: var(--orange); color: var(--orange); }
+  .history-nav button:disabled { opacity: 0.35; cursor: default; }
+  .history-nav button:disabled:hover { border-color: var(--border); color: var(--text-primary); }
+  .dots { display: flex; gap: 5px; justify-content: center; margin-top: 12px; }
+  .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--border); display: inline-block; cursor: pointer; }
+  .dots span.active { background: var(--orange); }
+  table.hist td.type-Run .pill { background: rgba(57,135,229,0.15); color: var(--series-run); }
+  table.hist td.type-Ride .pill { background: rgba(0,131,0,0.22); color: var(--series-ride); }
+  table.hist td.type-Swim .pill { background: rgba(213,81,129,0.15); color: var(--series-swim); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+  footer.page { margin-top: 24px; font-size: 11.5px; color: var(--text-muted); text-align: center; }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .grid.two { grid-template-columns: 1fr; }
+    .grid.three { grid-template-columns: 1fr; }
+    .insight-grid { grid-template-columns: 1fr; }
+    .skills-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>Athlete<span>OS</span></h1>
+    <div class="sub">Tue Jul 15, 2026 &middot; Base building, ~13 weeks to Munich Marathon</div>
+  </header>
+
+  <div class="grid three">
+    <div class="card stat-tile">
+      <div class="label">Munich Marathon</div>
+      <div class="value">88<span class="unit">days</span></div>
+      <div class="label">Oct 11, 2026 &middot; sub-2:48:00</div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Ironman Hamburg</div>
+      <div class="value">326<span class="unit">days</span></div>
+      <div class="label">Jun 6, 2027 &middot; sub-10:00:00 &middot; primary goal</div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">This week planned</div>
+      <div class="value">8.7<span class="unit">hrs</span></div>
+      <div class="label">Up from 6.5h last week</div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card" style="border-color: var(--orange);">
+      <h2>What Should I Do Today &mdash; Tue Jul 15</h2>
+      <div class="readiness" style="margin-bottom: 14px;">
+        <div class="badge"><span class="dot"></span>GO HARD</div>
+        <div class="details">
+          ACWR <b>0.68</b> (caution at 1.2+, danger at 1.5+) &middot; week-over-week <b>&minus;7.1%</b> &middot; sleep/HRV/RHR stable
+        </div>
+      </div>
+      <div style="font-size:13.5px; line-height:1.6; color:var(--text-secondary); border-top: 1px solid var(--border); padding-top: 12px;">
+        <b style="color:var(--text-primary)">No structured session is planned for today.</b> Phase 0 (Exam Rebuild)
+        begins tomorrow, Thu 7/16, with <b style="color:var(--orange)">Swim + Gym (Upper)</b>.
+        Readiness is clean if you want to add something today anyway — nothing in the data is holding you back.
+      </div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <div style="font-size:13.5px; line-height:1.6; color:var(--text-secondary)">
+        <b style="color:var(--text-primary)">Phase 0 &mdash; Exam Rebuild</b> &middot; Jul 16&ndash;29 &middot; 8.5&ndash;10.5 hrs/wk &middot; rebuilding toward your 9.9h chronic average
+      </div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Planned Training</h2>
+      <div class="history-nav">
+        <div class="week-label" id="planWeekLabel"></div>
+        <div class="btns">
+          <button id="planPrev">&larr; Prev</button>
+          <button id="planNext">Next &rarr;</button>
+        </div>
+      </div>
+      <table class="sessions" id="planTable">
+        <thead><tr><th>Day</th><th>Session</th><th>Target</th><th>Duration</th></tr></thead>
+        <tbody id="planBody"></tbody>
+      </table>
+      <div class="dots" id="planDots"></div>
+      <div id="planNote" style="font-size:11.5px; color:var(--text-muted); margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Weekly Volume Trend &mdash; Last 8 Weeks</h2>
+      <div class="chart-wrap">
+        <svg class="chart" id="volChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="volTooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Training Load &mdash; Acute vs. Chronic</h2>
+      <div class="legend">
+        <span><i style="background: var(--orange);"></i>Acute (weekly)</span>
+        <span><i style="background: var(--series-run);"></i>Chronic (4-wk avg)</span>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" id="loadChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="loadTooltip"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Average Heart Rate &mdash; Weekly</h2>
+      <div class="chart-wrap">
+        <svg class="chart" id="hrChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="hrTooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Elevation Gained &mdash; Weekly</h2>
+      <div class="chart-wrap">
+        <svg class="chart" id="elevChart" viewBox="0 0 1000 160" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="elevTooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Training History</h2>
+      <div class="history-nav">
+        <div class="week-label" id="histWeekLabel"></div>
+        <div class="btns">
+          <button id="histPrev">&larr; Prev</button>
+          <button id="histNext">Next &rarr;</button>
+        </div>
+      </div>
+      <table class="sessions hist" id="histTable">
+        <thead><tr><th>Day</th><th>Type</th><th>Distance</th><th>Duration</th><th>Avg HR</th><th>Avg Power</th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+      <div class="dots" id="histDots"></div>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Coach's Read</h2>
+      <div class="coaching-overview">
+        One week off an intentional taper, rebuilding deliberately toward your ~9.9h chronic average rather
+        than jumping straight back to your ~13.6h peak. Today's numbers are clean &mdash; nothing holding you
+        back. The recurring issue isn't fitness, it's discipline on the unglamorous stuff: swim frequency and
+        bike consistency, not raw effort.
+      </div>
+      <div class="insight-grid">
+        <div class="insight">
+          <div class="fw">Gabbett &middot; ACWR</div>
+          <p>Today's ACWR is 0.68 &mdash; under-loaded relative to your own chronic average, not at risk. Room to push today without leaving the 0.8&ndash;1.3 safe zone.</p>
+        </div>
+        <div class="insight">
+          <div class="fw">Seiler &middot; Polarized 80/20</div>
+          <p>2 hard sessions against 5 easy/recovery this week &mdash; close to the 80/20 split the research supports. Keep Saturday's tempo genuinely hard, not comfortably-hard.</p>
+        </div>
+        <div class="insight">
+          <div class="fw">Your data &middot; Spike pattern</div>
+          <p>3 historical volume spikes over 30% (one +484%), always right after an artificially low week. This week's +34% is sized off your chronic average specifically to not repeat that.</p>
+        </div>
+        <div class="insight">
+          <div class="fw">Your data &middot; Swim/bike gap</div>
+          <p>68% of the last 16 weeks had zero rides, 37.5% had zero swims. Run isn't the limiter for either goal race anymore &mdash; consistency in the other two is.</p>
+        </div>
+      </div>
+      <h2>Right Now</h2>
+      <ul class="tips">
+        <li>Thursday's swim is the week's only pool session &mdash; non-negotiable, not optional.</li>
+        <li>Saturday's tempo should feel controlled by the end, not heroic &mdash; that's sub-2:48 pace, not a time trial.</li>
+        <li>Warm up properly before Saturday and Sunday &mdash; back-to-back hard/long days are where shortcuts show up later.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid one">
+    <div class="card">
+      <h2>Skills</h2>
+      <div class="skills-grid">
+        <div class="skill-tile"><div class="name">plan-my-week</div><div class="desc">Builds the coming 7 days from real data</div></div>
+        <div class="skill-tile"><div class="name">review-my-week</div><div class="desc">Grades last week A&ndash;F, fatigue-weighted</div></div>
+        <div class="skill-tile"><div class="name">weekly-review</div><div class="desc">Execution quality + feel-vs-data check</div></div>
+        <div class="skill-tile"><div class="name">recovery-check</div><div class="desc">Daily GO HARD / EASY / REST call</div></div>
+        <div class="skill-tile"><div class="name">fuel-and-pace</div><div class="desc">Race-day fueling &amp; pacing plans</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="page">Athlete OS &middot; built from your real Strava, training, and race data</footer>
+</div>
+
+<script>
+(function() {
+  const data = [
+    {week: "May 25", hours: 13.9}, {week: "Jun 1", hours: 11.4}, {week: "Jun 8", hours: 12.8},
+    {week: "Jun 15", hours: 12.9}, {week: "Jun 22", hours: 12.4}, {week: "Jun 29", hours: 7.8},
+    {week: "Jul 6", hours: 6.5}, {week: "Jul 13", hours: 2.3, partial: true}
+  ];
+  const svg = document.getElementById('volChart');
+  const tooltip = document.getElementById('volTooltip');
+  const W = 1000, H = 190, padL = 36, padR = 10, padT = 10, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxV = Math.max(...data.map(d => d.hours)) * 1.15;
+  const n = data.length, stepX = plotW / (n - 1);
+  const ns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  for (let g = 0; g <= 3; g++) {
+    const y = padT + plotH - (g / 3) * plotH;
+    svg.appendChild(el('line', {x1: padL, x2: W - padR, y1: y, y2: y, stroke: 'var(--border)', 'stroke-width': 1}));
+    const tick = el('text', {x: padL - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--text-muted)'});
+    tick.textContent = Math.round((g / 3) * maxV) + 'h';
+    svg.appendChild(tick);
+  }
+  const pts = data.map((d, i) => ({x: padL + i * stepX, y: padT + plotH - (d.hours / maxV) * plotH, d}));
+  const pathD = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+  const areaD = pathD + ` L${pts[n-1].x.toFixed(1)},${padT+plotH} L${pts[0].x.toFixed(1)},${padT+plotH} Z`;
+  const defs = el('defs', {});
+  const grad = el('linearGradient', {id: 'volGrad', x1: 0, y1: 0, x2: 0, y2: 1});
+  grad.appendChild(el('stop', {offset: '0%', 'stop-color': 'var(--orange)', 'stop-opacity': 0.25}));
+  grad.appendChild(el('stop', {offset: '100%', 'stop-color': 'var(--orange)', 'stop-opacity': 0}));
+  defs.appendChild(grad); svg.appendChild(defs);
+  svg.appendChild(el('path', {d: areaD, fill: 'url(#volGrad)', stroke: 'none'}));
+  svg.appendChild(el('path', {d: pathD, fill: 'none', stroke: 'var(--orange)', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}));
+  pts.forEach((p) => {
+    svg.appendChild(el('circle', {cx: p.x, cy: p.y, r: p.d.partial ? 5 : 6, fill: p.d.partial ? 'var(--surface-1)' : 'var(--orange)', stroke: 'var(--orange)', 'stroke-width': p.d.partial ? 2 : 0, 'stroke-dasharray': p.d.partial ? '2,2' : 'none'}));
+    const label = el('text', {x: p.x, y: H - 6, 'text-anchor': 'middle', 'font-size': 12, fill: 'var(--text-muted)'});
+    label.textContent = p.d.week; svg.appendChild(label);
+    const hit = el('circle', {cx: p.x, cy: p.y, r: 16, fill: 'transparent', style: 'cursor:pointer'});
+    hit.addEventListener('mouseenter', () => {
+      tooltip.style.opacity = 1; tooltip.style.left = (p.x / W * 100) + '%'; tooltip.style.top = (p.y / H * 100) + '%';
+      tooltip.textContent = p.d.week + ': ' + p.d.hours + 'h' + (p.d.partial ? ' (in progress)' : '');
+    });
+    hit.addEventListener('mouseleave', () => { tooltip.style.opacity = 0; });
+    svg.appendChild(hit);
+  });
+})();
+
+(function() {
+  const wk = [
+    {week:"May 18", hours:2.4, chronic:2.4, elev:135, hr:160},
+    {week:"May 25", hours:13.9, chronic:8.1, elev:1312, hr:145},
+    {week:"Jun 1", hours:11.4, chronic:9.2, elev:302, hr:145},
+    {week:"Jun 8", hours:12.8, chronic:10.1, elev:133, hr:140},
+    {week:"Jun 15", hours:12.9, chronic:12.8, elev:324, hr:142},
+    {week:"Jun 22", hours:12.4, chronic:12.4, elev:169, hr:134},
+    {week:"Jun 29", hours:7.8, chronic:11.5, elev:167, hr:130},
+    {week:"Jul 6", hours:6.5, chronic:9.9, elev:153, hr:137},
+    {week:"Jul 13", hours:2.3, chronic:7.3, elev:31, hr:137, partial:true}
+  ];
+  const ns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  // --- dual-line: acute vs chronic load ---
+  (function() {
+    const svg = document.getElementById('loadChart'), tooltip = document.getElementById('loadTooltip');
+    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const maxV = Math.max(...wk.map(d=>Math.max(d.hours,d.chronic)))*1.15;
+    const n=wk.length, stepX=plotW/(n-1);
+    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
+      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'h'; svg.appendChild(t);
+    }
+    function linePts(key){ return wk.map((d,i)=>({x:padL+i*stepX, y:padT+plotH-(d[key]/maxV)*plotH, d})); }
+    function drawLine(key, color){
+      const pts = linePts(key);
+      const d = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+      svg.appendChild(el('path',{d, fill:'none', stroke:color, 'stroke-width':2.5, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+      pts.forEach(p=>{
+        svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:4,fill:color}));
+        const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
+        hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%';
+          tooltip.textContent = p.d.week+': '+p.d[key]+'h ('+(key==='hours'?'acute':'chronic')+')'; });
+        hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+        svg.appendChild(hit);
+      });
+    }
+    drawLine('chronic', 'var(--series-run)');
+    drawLine('hours', 'var(--orange)');
+    wk.forEach((d,i)=>{ const x=padL+i*stepX; const t=el('text',{x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=d.week; svg.appendChild(t); });
+  })();
+
+  // --- single-line: avg HR ---
+  (function() {
+    const svg = document.getElementById('hrChart'), tooltip = document.getElementById('hrTooltip');
+    const W=1000,H=190,padL=32,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const vals = wk.map(d=>d.hr);
+    const minV = Math.min(...vals)-5, maxV = Math.max(...vals)+5;
+    const n=wk.length, stepX=plotW/(n-1);
+    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
+      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el('text',{x:padL-6,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round(minV+(g/3)*(maxV-minV)); svg.appendChild(t);
+    }
+    const pts = wk.map((d,i)=>({x:padL+i*stepX, y:padT+plotH-((d.hr-minV)/(maxV-minV))*plotH, d}));
+    const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    svg.appendChild(el('path',{d:pathD, fill:'none', stroke:'var(--orange)', 'stroke-width':3, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    pts.forEach(p=>{
+      svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:5,fill:'var(--orange)'}));
+      const t=el('text',{x:p.x,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=p.d.week; svg.appendChild(t);
+      const hit = el('circle',{cx:p.x,cy:p.y,r:14,fill:'transparent',style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(p.x/W*100)+'%'; tooltip.style.top=(p.y/H*100)+'%'; tooltip.textContent=p.d.week+': '+p.d.hr+' bpm avg'; });
+      hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+      svg.appendChild(hit);
+    });
+  })();
+
+  // --- bar: elevation ---
+  (function() {
+    const svg = document.getElementById('elevChart'), tooltip = document.getElementById('elevTooltip');
+    const W=1000,H=160,padL=36,padR=10,padT=10,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+    const maxV = Math.max(...wk.map(d=>d.elev))*1.15;
+    const n=wk.length, bw = plotW/n*0.55, gap = plotW/n;
+    for (let g=0; g<=3; g++){ const y=padT+plotH-(g/3)*plotH;
+      svg.appendChild(el('line',{x1:padL,x2:W-padR,y1:y,y2:y,stroke:'var(--border)','stroke-width':1}));
+      const t=el('text',{x:padL-8,y:y+4,'text-anchor':'end','font-size':10,fill:'var(--text-muted)'}); t.textContent=Math.round((g/3)*maxV)+'m'; svg.appendChild(t);
+    }
+    wk.forEach((d,i)=>{
+      const cx = padL + gap*i + gap/2;
+      const bh = (d.elev/maxV)*plotH;
+      const y = padT+plotH-bh;
+      svg.appendChild(el('rect',{x:cx-bw/2, y, width:bw, height:bh, rx:4, fill:'var(--series-run)'}));
+      const t=el('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':10.5,fill:'var(--text-muted)'}); t.textContent=d.week; svg.appendChild(t);
+      const hit = el('rect',{x:cx-gap/2, y:padT, width:gap, height:plotH, fill:'transparent', style:'cursor:pointer'});
+      hit.addEventListener('mouseenter',()=>{ tooltip.style.opacity=1; tooltip.style.left=(cx/W*100)+'%'; tooltip.style.top=(y/H*100)+'%'; tooltip.textContent=d.week+': '+d.elev+'m gain'; });
+      hit.addEventListener('mouseleave',()=>{ tooltip.style.opacity=0; });
+      svg.appendChild(hit);
+    });
+  })();
+})();
+
+(function() {
+  const weeks = [{"week_start":"2026-05-18","total_hours":2.4,"sessions":[{"date":"2026-05-19","day":"Tue","type":"Run","distance_km":10.0,"duration_min":48.8,"avg_hr":158,"avg_watts":323},{"date":"2026-05-21","day":"Thu","type":"Run","distance_km":10.01,"duration_min":39.9,"avg_hr":175,"avg_watts":400},{"date":"2026-05-22","day":"Fri","type":"Run","distance_km":10.0,"duration_min":54.3,"avg_hr":152,"avg_watts":311}]},{"week_start":"2026-05-25","total_hours":13.9,"sessions":[{"date":"2026-05-26","day":"Tue","type":"Run","distance_km":13.01,"duration_min":60.0,"avg_hr":166,"avg_watts":353},{"date":"2026-05-27","day":"Wed","type":"Ride","distance_km":160.37,"duration_min":357.4,"avg_hr":139,"avg_watts":null},{"date":"2026-05-28","day":"Thu","type":"Run","distance_km":21.11,"duration_min":108.5,"avg_hr":149,"avg_watts":312},{"date":"2026-05-29","day":"Fri","type":"Swim","distance_km":1.0,"duration_min":27.7,"avg_hr":122,"avg_watts":null},{"date":"2026-05-29","day":"Fri","type":"Ride","distance_km":41.91,"duration_min":90.6,"avg_hr":141,"avg_watts":null},{"date":"2026-05-29","day":"Fri","type":"Run","distance_km":5.9,"duration_min":28.2,"avg_hr":152,"avg_watts":336},{"date":"2026-05-30","day":"Sat","type":"Swim","distance_km":1.8,"duration_min":33.8,"avg_hr":116,"avg_watts":null},{"date":"2026-05-30","day":"Sat","type":"Run","distance_km":16.0,"duration_min":80.8,"avg_hr":158,"avg_watts":325},{"date":"2026-05-31","day":"Sun","type":"Run","distance_km":4.01,"duration_min":19.9,"avg_hr":150,"avg_watts":327},{"date":"2026-05-31","day":"Sun","type":"Swim","distance_km":1.21,"duration_min":28.0,"avg_hr":148,"avg_watts":null}]},{"week_start":"2026-06-01","total_hours":11.4,"sessions":[{"date":"2026-06-01","day":"Mon","type":"Ride","distance_km":0.0,"duration_min":64.8,"avg_hr":141,"avg_watts":null},{"date":"2026-06-01","day":"Mon","type":"Run","distance_km":10.05,"duration_min":60.0,"avg_hr":139,"avg_watts":272},{"date":"2026-06-02","day":"Tue","type":"Swim","distance_km":2.3,"duration_min":46.6,"avg_hr":133,"avg_watts":null},{"date":"2026-06-03","day":"Wed","type":"Run","distance_km":21.12,"duration_min":98.1,"avg_hr":161,"avg_watts":350},{"date":"2026-06-04","day":"Thu","type":"Run","distance_km":15.41,"duration_min":83.1,"avg_hr":139,"avg_watts":300},{"date":"2026-06-04","day":"Thu","type":"Ride","distance_km":0.0,"duration_min":61.9,"avg_hr":124,"avg_watts":null},{"date":"2026-06-05","day":"Fri","type":"Run","distance_km":15.0,"duration_min":79.6,"avg_hr":142,"avg_watts":307},{"date":"2026-06-05","day":"Fri","type":"Ride","distance_km":0.0,"duration_min":63.0,"avg_hr":153,"avg_watts":null},{"date":"2026-06-06","day":"Sat","type":"Run","distance_km":15.0,"duration_min":66.8,"avg_hr":152,"avg_watts":359},{"date":"2026-06-07","day":"Sun","type":"Run","distance_km":14.02,"duration_min":62.6,"avg_hr":161,"avg_watts":358}]},{"week_start":"2026-06-08","total_hours":12.8,"sessions":[{"date":"2026-06-08","day":"Mon","type":"Run","distance_km":13.59,"duration_min":74.8,"avg_hr":141,"avg_watts":291},{"date":"2026-06-08","day":"Mon","type":"Ride","distance_km":0.0,"duration_min":68.6,"avg_hr":152,"avg_watts":null},{"date":"2026-06-09","day":"Tue","type":"Ride","distance_km":0.0,"duration_min":175.5,"avg_hr":139,"avg_watts":null},{"date":"2026-06-09","day":"Tue","type":"Run","distance_km":2.0,"duration_min":10.2,"avg_hr":156,"avg_watts":320},{"date":"2026-06-10","day":"Wed","type":"Swim","distance_km":1.1,"duration_min":20.4,"avg_hr":104,"avg_watts":null},{"date":"2026-06-10","day":"Wed","type":"Ride","distance_km":0.0,"duration_min":75.9,"avg_hr":132,"avg_watts":null},{"date":"2026-06-11","day":"Thu","type":"Run","distance_km":21.1,"duration_min":89.9,"avg_hr":170,"avg_watts":380},{"date":"2026-06-12","day":"Fri","type":"Ride","distance_km":0.0,"duration_min":77.2,"avg_hr":126,"avg_watts":null},{"date":"2026-06-12","day":"Fri","type":"Swim","distance_km":2.2,"duration_min":42.8,"avg_hr":139,"avg_watts":null},{"date":"2026-06-13","day":"Sat","type":"Swim","distance_km":1.9,"duration_min":43.5,"avg_hr":106,"avg_watts":null},{"date":"2026-06-13","day":"Sat","type":"Run","distance_km":8.62,"duration_min":44.4,"avg_hr":143,"avg_watts":313},{"date":"2026-06-14","day":"Sun","type":"Swim","distance_km":2.3,"duration_min":47.4,"avg_hr":138,"avg_watts":null}]},{"week_start":"2026-06-15","total_hours":12.9,"sessions":[{"date":"2026-06-15","day":"Mon","type":"Run","distance_km":15.43,"duration_min":79.9,"avg_hr":144,"avg_watts":314},{"date":"2026-06-15","day":"Mon","type":"Ride","distance_km":30.04,"duration_min":60.0,"avg_hr":142,"avg_watts":null},{"date":"2026-06-16","day":"Tue","type":"Swim","distance_km":2.3,"duration_min":44.7,"avg_hr":125,"avg_watts":null},{"date":"2026-06-17","day":"Wed","type":"Swim","distance_km":2.2,"duration_min":42.6,"avg_hr":133,"avg_watts":null},{"date":"2026-06-18","day":"Thu","type":"Swim","distance_km":1.9,"duration_min":45.2,"avg_hr":122,"avg_watts":null},{"date":"2026-06-18","day":"Thu","type":"Ride","distance_km":50.01,"duration_min":100.0,"avg_hr":136,"avg_watts":null},{"date":"2026-06-18","day":"Thu","type":"Run","distance_km":10.01,"duration_min":39.8,"avg_hr":174,"avg_watts":407},{"date":"2026-06-19","day":"Fri","type":"Ride","distance_km":32.57,"duration_min":75.0,"avg_hr":118,"avg_watts":null},{"date":"2026-06-19","day":"Fri","type":"Run","distance_km":10.0,"duration_min":55.4,"avg_hr":148,"avg_watts":288},{"date":"2026-06-20","day":"Sat","type":"Swim","distance_km":1.1,"duration_min":24.0,"avg_hr":126,"avg_watts":null},{"date":"2026-06-21","day":"Sun","type":"Ride","distance_km":0.0,"duration_min":161.0,"avg_hr":150,"avg_watts":null},{"date":"2026-06-21","day":"Sun","type":"Run","distance_km":10.55,"duration_min":44.7,"avg_hr":178,"avg_watts":382}]},{"week_start":"2026-06-22","total_hours":12.4,"sessions":[{"date":"2026-06-22","day":"Mon","type":"Swim","distance_km":1.1,"duration_min":21.6,"avg_hr":105,"avg_watts":null},{"date":"2026-06-22","day":"Mon","type":"Run","distance_km":10.0,"duration_min":55.0,"avg_hr":133,"avg_watts":248},{"date":"2026-06-23","day":"Tue","type":"Run","distance_km":21.1,"duration_min":119.4,"avg_hr":142,"avg_watts":286},{"date":"2026-06-23","day":"Tue","type":"Ride","distance_km":0.0,"duration_min":30.9,"avg_hr":132,"avg_watts":null},{"date":"2026-06-24","day":"Wed","type":"Swim","distance_km":1.9,"duration_min":45.3,"avg_hr":137,"avg_watts":null},{"date":"2026-06-25","day":"Thu","type":"Ride","distance_km":0.0,"duration_min":114.3,"avg_hr":134,"avg_watts":null},{"date":"2026-06-25","day":"Thu","type":"Run","distance_km":3.86,"duration_min":19.4,"avg_hr":145,"avg_watts":329},{"date":"2026-06-26","day":"Fri","type":"Swim","distance_km":2.1,"duration_min":41.5,"avg_hr":106,"avg_watts":null},{"date":"2026-06-26","day":"Fri","type":"Ride","distance_km":0.0,"duration_min":41.0,"avg_hr":116,"avg_watts":null},{"date":"2026-06-27","day":"Sat","type":"Ride","distance_km":0.0,"duration_min":131.9,"avg_hr":133,"avg_watts":null},{"date":"2026-06-27","day":"Sat","type":"Run","distance_km":11.01,"duration_min":53.7,"avg_hr":154,"avg_watts":335},{"date":"2026-06-27","day":"Sat","type":"Swim","distance_km":0.53,"duration_min":12.5,"avg_hr":141,"avg_watts":null},{"date":"2026-06-28","day":"Sun","type":"Swim","distance_km":0.38,"duration_min":10.4,"avg_hr":116,"avg_watts":null},{"date":"2026-06-28","day":"Sun","type":"Run","distance_km":10.0,"duration_min":48.3,"avg_hr":151,"avg_watts":343}]},{"week_start":"2026-06-29","total_hours":7.8,"sessions":[{"date":"2026-06-29","day":"Mon","type":"Swim","distance_km":1.0,"duration_min":18.3,"avg_hr":120,"avg_watts":null},{"date":"2026-06-29","day":"Mon","type":"Run","distance_km":10.79,"duration_min":58.5,"avg_hr":144,"avg_watts":302},{"date":"2026-06-30","day":"Tue","type":"Swim","distance_km":1.9,"duration_min":42.0,"avg_hr":138,"avg_watts":null},{"date":"2026-06-30","day":"Tue","type":"Ride","distance_km":0.0,"duration_min":76.6,"avg_hr":131,"avg_watts":null},{"date":"2026-07-01","day":"Wed","type":"Ride","distance_km":0.0,"duration_min":89.5,"avg_hr":112,"avg_watts":null},{"date":"2026-07-02","day":"Thu","type":"Run","distance_km":10.03,"duration_min":50.3,"avg_hr":134,"avg_watts":317},{"date":"2026-07-02","day":"Thu","type":"Swim","distance_km":1.2,"duration_min":27.0,"avg_hr":128,"avg_watts":null},{"date":"2026-07-03","day":"Fri","type":"Swim","distance_km":1.0,"duration_min":17.9,"avg_hr":103,"avg_watts":null},{"date":"2026-07-04","day":"Sat","type":"Ride","distance_km":32.54,"duration_min":64.6,"avg_hr":134,"avg_watts":160},{"date":"2026-07-04","day":"Sat","type":"Run","distance_km":6.36,"duration_min":26.3,"avg_hr":163,"avg_watts":393}]},{"week_start":"2026-07-06","total_hours":6.5,"sessions":[{"date":"2026-07-06","day":"Mon","type":"Run","distance_km":9.99,"duration_min":63.1,"avg_hr":132,"avg_watts":261},{"date":"2026-07-06","day":"Mon","type":"Ride","distance_km":0.0,"duration_min":30.5,"avg_hr":122,"avg_watts":null},{"date":"2026-07-07","day":"Tue","type":"Swim","distance_km":1.05,"duration_min":19.9,"avg_hr":108,"avg_watts":null},{"date":"2026-07-07","day":"Tue","type":"Ride","distance_km":0.0,"duration_min":29.9,"avg_hr":126,"avg_watts":147},{"date":"2026-07-09","day":"Thu","type":"Run","distance_km":9.14,"duration_min":45.4,"avg_hr":153,"avg_watts":330},{"date":"2026-07-10","day":"Fri","type":"Run","distance_km":16.4,"duration_min":80.9,"avg_hr":147,"avg_watts":331},{"date":"2026-07-11","day":"Sat","type":"Run","distance_km":10.0,"duration_min":53.6,"avg_hr":141,"avg_watts":306},{"date":"2026-07-12","day":"Sun","type":"Run","distance_km":11.87,"duration_min":69.4,"avg_hr":134,"avg_watts":282}]},{"week_start":"2026-07-13","total_hours":2.3,"sessions":[{"date":"2026-07-14","day":"Tue","type":"Ride","distance_km":0.0,"duration_min":60.8,"avg_hr":127,"avg_watts":134},{"date":"2026-07-14","day":"Tue","type":"Run","distance_km":15.07,"duration_min":78.9,"avg_hr":146,"avg_watts":311}]}];
+  let idx = weeks.length - 1; // start on most recent
+  const label = document.getElementById('histWeekLabel');
+  const body = document.getElementById('histBody');
+  const dotsWrap = document.getElementById('histDots');
+  const prevBtn = document.getElementById('histPrev');
+  const nextBtn = document.getElementById('histNext');
+
+  function fmtDate(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+  }
+
+  function render() {
+    const w = weeks[idx];
+    label.innerHTML = 'Week of ' + fmtDate(w.week_start) + ' &mdash; <span class="hrs">' + w.total_hours + 'h</span>';
+    body.innerHTML = '';
+    if (w.sessions.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="6" style="color:var(--text-muted); padding:10px 0;">No sessions logged this week.</td>';
+      body.appendChild(tr);
+    }
+    w.sessions.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="day">${s.day} ${fmtDate(s.date)}</td>
+        <td class="type-${s.type}"><span class="pill">${s.type}</span></td>
+        <td>${s.distance_km > 0 ? s.distance_km + ' km' : '&mdash;'}</td>
+        <td class="dur">${s.duration_min} min</td>
+        <td>${s.avg_hr ? s.avg_hr + ' bpm' : '&mdash;'}</td>
+        <td>${s.avg_watts ? s.avg_watts + 'W' : '&mdash;'}</td>
+      `;
+      body.appendChild(tr);
+    });
+    dotsWrap.innerHTML = '';
+    weeks.forEach((_, i) => {
+      const dot = document.createElement('span');
+      if (i === idx) dot.className = 'active';
+      dot.addEventListener('click', () => { idx = i; render(); });
+      dotsWrap.appendChild(dot);
+    });
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === weeks.length - 1;
+  }
+
+  prevBtn.addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
+  nextBtn.addEventListener('click', () => { if (idx < weeks.length - 1) { idx++; render(); } });
+  render();
+})();
+
+(function() {
+  const plannedWeeks = [
+    {
+      week_start: "2026-07-16", total_hours: 8.7, phase: "Phase 0 — Exam Rebuild",
+      sessions: [
+        {day:"Thu 7/16", name:"Swim + Gym (Upper)", metric:"~2000m @ 2:05–2:10/100m", dur:"45 min + gym",
+         segments:["<b>300m</b> warm-up, easy","<b>6&times;200m</b> @ 2:05–2:10/100m, 20s rest","<b>4&times;50m</b> @ ~1:50/100m, technique","<b>300m</b> cool-down, easy",
+                    "<b>Upper:</b> 3&times;10 push-ups/bench press","3&times;10 rows","3&times;10 overhead press","3&times;10 lat pulldowns"]},
+        {day:"Fri 7/17", name:"Easy run", tag:"easy", metric:"~144 bpm", dur:"60 min"},
+        {day:"Fri 7/17", name:"Easy bike", tag:"easy", metric:"~150–180W (est.)", dur:"30 min"},
+        {day:"Sat 7/18", name:"Quality run — tempo", tag:"hard", metric:"~166–186 bpm", dur:"55–60 min",
+         segments:["<b>15 min</b> warm-up, ~144 bpm","<b>20–25 min</b> tempo, ~166–186 bpm &middot; ~3:50–4:05/km|hard","<b>15–20 min</b> cool-down, ~144 bpm"]},
+        {day:"Sun 7/19", name:"Long run — easy", metric:"~144 bpm &middot; ~16–17km", dur:"95–100 min"},
+        {day:"Mon 7/20", name:"Recovery bike + Gym (Anterior)", metric:"&lt;130W (est.)", dur:"30–40 min + gym",
+         segments:["<b>30–40 min</b> easy spin, &lt;130W","<b>Anterior:</b> 3&times;10 Bulgarian split squats/leg","3&times;12 goblet squats","3&times;15 calf raises","2&times;8 low-box step-downs (plyo)"]},
+        {day:"Tue 7/21", name:"Quality bike", tag:"hard", metric:"~215–250W (est.)", dur:"70–75 min",
+         segments:["<b>15 min</b> warm-up, easy","<b>3&times;8 min</b> hard, ~215–250W (est.)|hard","<b>4 min</b> easy spin between reps","<b>10–15 min</b> cool-down, easy"]},
+        {day:"Wed 7/22", name:"Easy run + Gym (Posterior)", metric:"~144 bpm", dur:"45–50 min + gym",
+         segments:["<b>45–50 min</b> easy run, ~144 bpm","<b>Posterior:</b> 3&times;10 Romanian deadlifts","3&times;12 hip thrusts","3&times;10 single-leg glute bridges/leg","3&times;12 hamstring curls"]},
+      ],
+      note: "This week is confirmed and saved. It hasn't happened yet as of today (Jul 15). Full A/P/U rotation added 2026-07-15 — original plan only had Anterior; Upper and Posterior added on request."
+    },
+    {
+      week_start: "2026-07-23", total_hours: 9.6, phase: "Phase 0 — Exam Rebuild (final week)",
+      sessions: [
+        {day:"Thu 7/23", name:"Swim + Gym (Upper)", metric:"~2100m @ 2:05–2:10/100m", dur:"45–50 min + gym",
+         segments:["<b>300m</b> warm-up, easy","<b>7&times;200m</b> @ 2:05–2:10/100m, 20s rest","<b>4&times;50m</b> @ ~1:50/100m, technique","<b>300m</b> cool-down, easy",
+                    "<b>Upper:</b> 3&times;10 push-ups/bench press","3&times;10 rows","3&times;10 overhead press","3&times;10 lat pulldowns"]},
+        {day:"Fri 7/24", name:"Easy run", tag:"easy", metric:"~144 bpm", dur:"65 min"},
+        {day:"Fri 7/24", name:"Easy bike", tag:"easy", metric:"~150–180W (est.)", dur:"30 min"},
+        {day:"Sat 7/25", name:"Quality run — tempo", tag:"hard", metric:"~166–186 bpm", dur:"60–65 min",
+         segments:["<b>15 min</b> warm-up, ~144 bpm","<b>25–28 min</b> tempo, ~166–186 bpm &middot; ~3:50–4:05/km|hard","<b>15–20 min</b> cool-down, ~144 bpm"]},
+        {day:"Sun 7/26", name:"Long run — easy", metric:"~144 bpm &middot; ~17–18km", dur:"100–105 min"},
+        {day:"Mon 7/27", name:"Recovery bike + Gym (Anterior)", metric:"&lt;130W (est.)", dur:"30–40 min + gym",
+         segments:["<b>30–40 min</b> easy spin, &lt;130W","<b>Anterior:</b> 3&times;10 Bulgarian split squats/leg","3&times;12 goblet squats","3&times;15 calf raises","2&times;10 low-box step-downs (plyo, 2nd week)"]},
+        {day:"Tue 7/28", name:"Quality bike", tag:"hard", metric:"~218–252W (est.)", dur:"75–80 min",
+         segments:["<b>15 min</b> warm-up, easy","<b>3&times;9 min</b> hard, ~218–252W (est.)|hard","<b>4 min</b> easy spin between reps","<b>10–15 min</b> cool-down, easy"]},
+        {day:"Wed 7/29", name:"Easy run + Gym (Posterior)", metric:"~144 bpm", dur:"45–50 min + gym",
+         segments:["<b>45–50 min</b> easy run, ~144 bpm","<b>Posterior:</b> 3&times;10 Romanian deadlifts","3&times;12 hip thrusts","3&times;10 single-leg glute bridges/leg","3&times;12 hamstring curls"]},
+      ],
+      note: "Built ahead of schedule at your request. Not yet reactive to real 07-16 execution data since that week hadn't happened yet — the next real /plan-my-week run may still adjust this. Full A/P/U rotation restored this week."
+    }
+  ];
+
+  let pIdx = 0;
+  const pLabel = document.getElementById('planWeekLabel');
+  const pBody = document.getElementById('planBody');
+  const pDots = document.getElementById('planDots');
+  const pNote = document.getElementById('planNote');
+  const pPrev = document.getElementById('planPrev');
+  const pNext = document.getElementById('planNext');
+
+  function fmtDate2(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+  }
+
+  function renderPlan() {
+    const w = plannedWeeks[pIdx];
+    pLabel.innerHTML = 'Week of ' + fmtDate2(w.week_start) + ' &mdash; <span class="hrs">' + w.total_hours + 'h</span> &middot; ' + w.phase;
+    pBody.innerHTML = '';
+    w.sessions.forEach(s => {
+      const tr = document.createElement('tr');
+      const tag = s.tag ? ` <span class="tag ${s.tag}">${s.tag.toUpperCase()}</span>` : '';
+      tr.innerHTML = `<td class="day">${s.day}</td><td>${s.name}${tag}</td><td class="metric">${s.metric}</td><td class="dur">${s.dur}</td>`;
+      pBody.appendChild(tr);
+      if (s.segments) {
+        const btr = document.createElement('tr');
+        btr.className = 'breakdown';
+        const spans = s.segments.map(seg => {
+          const hard = seg.endsWith('|hard');
+          const text = hard ? seg.slice(0, -5) : seg;
+          return `<span class="segment${hard ? ' hard-seg' : ''}">${text}</span>`;
+        }).join('');
+        btr.innerHTML = `<td></td><td colspan="3"><div class="segments">${spans}</div></td>`;
+        pBody.appendChild(btr);
+      }
+    });
+    pNote.textContent = w.note || '';
+    pDots.innerHTML = '';
+    plannedWeeks.forEach((_, i) => {
+      const dot = document.createElement('span');
+      if (i === pIdx) dot.className = 'active';
+      dot.addEventListener('click', () => { pIdx = i; renderPlan(); });
+      pDots.appendChild(dot);
+    });
+    pPrev.disabled = pIdx === 0;
+    pNext.disabled = pIdx === plannedWeeks.length - 1;
+  }
+
+  pPrev.addEventListener('click', () => { if (pIdx > 0) { pIdx--; renderPlan(); } });
+  pNext.addEventListener('click', () => { if (pIdx < plannedWeeks.length - 1) { pIdx++; renderPlan(); } });
+  renderPlan();
+})();
+</script>
+
+</body>
+</html>
