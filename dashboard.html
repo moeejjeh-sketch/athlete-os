@@ -313,11 +313,7 @@
 
   <div class="grid two">
     <div class="card">
-      <h2>Easy/Hard Split &mdash; Weekly (Run)</h2>
-      <div class="legend">
-        <span><i style="background: var(--text-secondary);"></i>Easy</span>
-        <span><i style="background: var(--orange);"></i>Hard</span>
-      </div>
+      <h2>Total Distance &mdash; Weekly (Run)</h2>
       <div class="chart-wrap">
         <svg class="chart" id="splitChart" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
         <div class="tooltip" id="splitTooltip"></div>
@@ -335,11 +331,8 @@
 
   <div class="grid two">
     <div class="card">
-      <h2>Easy/Hard Split &mdash; Weekly (Bike)</h2>
-      <div class="legend">
-        <span><i style="background: var(--text-secondary);"></i>Easy</span>
-        <span><i style="background: var(--orange);"></i>Hard</span>
-      </div>
+      <h2>Total Distance &mdash; Weekly (Bike)</h2>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Many rides log 0km (indoor trainer) &mdash; distance undercounts real bike volume</div>
       <div class="chart-wrap">
         <svg class="chart" id="splitChartBike" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
         <div class="tooltip" id="splitTooltipBike"></div>
@@ -357,11 +350,7 @@
 
   <div class="grid two">
     <div class="card">
-      <h2>Easy/Hard Split &mdash; Weekly (Swim)</h2>
-      <div class="legend">
-        <span><i style="background: var(--text-secondary);"></i>Easy</span>
-        <span><i style="background: var(--orange);"></i>Hard</span>
-      </div>
+      <h2>Total Distance &mdash; Weekly (Swim)</h2>
       <div class="chart-wrap">
         <svg class="chart" id="splitChartSwim" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
         <div class="tooltip" id="splitTooltipSwim"></div>
@@ -611,10 +600,7 @@
   const ns = "http://www.w3.org/2000/svg";
   function el(tag, attrs) { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
-  // Session-level data (same source as Training History) for the four charts below.
-  // MAX_HR is the confirmed observed max (207bpm) from the full 6-month analysis —
-  // real, not estimated — used to classify easy (<78%) vs hard (>=87%) run effort.
-  const MAX_HR = 207;
+  // Session-level data (same source as Training History) for the charts below.
   const sessionWeeks = [
     {week:"May 18", sessions:[{"type":"Run","distance_km":10.0,"duration_min":48.8,"avg_hr":158},{"type":"Run","distance_km":10.01,"duration_min":39.9,"avg_hr":175},{"type":"Run","distance_km":10.0,"duration_min":54.3,"avg_hr":152}]},
     {week:"May 25", sessions:[{"type":"Run","distance_km":13.01,"duration_min":60.0,"avg_hr":166},{"type":"Ride","distance_km":160.37,"duration_min":357.4,"avg_hr":139},{"type":"Run","distance_km":21.11,"duration_min":108.5,"avg_hr":149},{"type":"Swim","distance_km":1.0,"duration_min":27.7,"avg_hr":122},{"type":"Ride","distance_km":41.91,"duration_min":90.6,"avg_hr":141},{"type":"Run","distance_km":5.9,"duration_min":28.2,"avg_hr":152},{"type":"Swim","distance_km":1.8,"duration_min":33.8,"avg_hr":116},{"type":"Run","distance_km":16.0,"duration_min":80.8,"avg_hr":158},{"type":"Run","distance_km":4.01,"duration_min":19.9,"avg_hr":150},{"type":"Swim","distance_km":1.21,"duration_min":28.0,"avg_hr":148}]},
@@ -686,24 +672,15 @@
     {label:'Swim', color:'var(--series-swim)', value: w => w.sessions.filter(s=>s.type==='Swim').reduce((s,x)=>s+x.duration_min,0)/60},
   ], 190, v => v.toFixed(1)+'h');
 
-  // --- Easy/hard split: minutes by intensity bucket, generalized by discipline ---
-  function bucketMinutes(w, type, bucket) {
-    return w.sessions.filter(s=>s.type===type).reduce((sum,s)=>{
-      if (!s.avg_hr) return sum;
-      const pct = s.avg_hr / MAX_HR;
-      const b = pct < 0.78 ? 'easy' : (pct >= 0.87 ? 'hard' : 'mid');
-      return b === bucket ? sum + s.duration_min : sum;
-    }, 0);
-  }
-  function drawSplitChart(svgId, tooltipId, type) {
+  // --- Total distance per week, generalized by discipline ---
+  function drawDistanceChart(svgId, tooltipId, type, color) {
     drawStackedBar(svgId, tooltipId, [
-      {label:'Easy', color:'var(--text-secondary)', value: w => bucketMinutes(w,type,'easy') + bucketMinutes(w,type,'mid')},
-      {label:'Hard', color:'var(--orange)', value: w => bucketMinutes(w,type,'hard')},
-    ], 190, v => Math.round(v)+'m');
+      {label:type, color, value: w => w.sessions.filter(s=>s.type===type).reduce((sum,s)=>sum+s.distance_km,0)},
+    ], 190, v => v.toFixed(1)+'km');
   }
-  drawSplitChart('splitChart', 'splitTooltip', 'Run');
-  drawSplitChart('splitChartBike', 'splitTooltipBike', 'Ride');
-  drawSplitChart('splitChartSwim', 'splitTooltipSwim', 'Swim');
+  drawDistanceChart('splitChart', 'splitTooltip', 'Run', 'var(--series-run)');
+  drawDistanceChart('splitChartBike', 'splitTooltipBike', 'Ride', 'var(--series-ride)');
+  drawDistanceChart('splitChartSwim', 'splitTooltipSwim', 'Swim', 'var(--series-swim)');
 
   // --- Longest session per week (line), generalized by discipline + metric ---
   function drawLongestChart(svgId, tooltipId, type, metricKey, unit, targetBand) {
