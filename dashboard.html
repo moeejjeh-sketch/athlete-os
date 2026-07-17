@@ -92,6 +92,11 @@
   table.sessions .day { font-weight: 700; white-space: nowrap; color: var(--text-primary); }
   table.sessions .metric { font-weight: 600; color: var(--orange); white-space: nowrap; }
   table.sessions .dur { color: var(--text-secondary); white-space: nowrap; }
+
+  /* Planned Training: group same-day sessions into one visual block */
+  #planTable td.day { vertical-align: middle; text-align: center; background: var(--surface-2); border-radius: 8px; border-top: none !important; }
+  #planTable tr.day-start td { border-top: 2px solid var(--border); }
+  #planTable tr.day-sep td:not(.day) { border-top: 1px dashed var(--border); }
   table.sessions .est { color: var(--text-muted); font-size: 11px; font-weight: 400; }
   .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: 0.02em; margin-left: 6px; }
   .tag.hard { background: rgba(255,122,51,0.16); color: var(--orange); }
@@ -1016,31 +1021,46 @@
     const w = plannedWeeks[pIdx];
     pLabel.innerHTML = 'Week of ' + fmtDate2(w.week_start) + ' &mdash; <span class="hrs">' + w.total_hours + 'h</span> &middot; ' + w.phase;
     pBody.innerHTML = '';
+    // Group consecutive sessions on the same day into one block: the day
+    // label spans (rowspan) every row that day produces, so multiple
+    // workouts on one day read as one grouped block, not separate days.
+    const groups = [];
     w.sessions.forEach(s => {
-      const tr = document.createElement('tr');
-      const tag = s.tag ? ` <span class="tag ${s.tag}">${s.tag.toUpperCase()}</span>` : '';
-      tr.innerHTML = `<td class="day">${s.day}</td><td>${s.name}${tag}</td><td class="metric">${s.metric}</td><td class="dur">${s.dur}</td>`;
-      pBody.appendChild(tr);
-      if (s.rpe || s.carbs) {
-        const rtr = document.createElement('tr');
-        rtr.className = 'breakdown';
-        rtr.innerHTML = `<td></td><td colspan="3"><div class="segments">
-          <span class="segment">RPE <b>${s.rpe || '—'}</b>/10</span>
-          <span class="segment">Carbs <b>${s.carbs || '—'}</b></span>
-        </div></td>`;
-        pBody.appendChild(rtr);
-      }
-      if (s.segments) {
-        const btr = document.createElement('tr');
-        btr.className = 'breakdown';
-        const spans = s.segments.map(seg => {
-          const hard = seg.endsWith('|hard');
-          const text = hard ? seg.slice(0, -5) : seg;
-          return `<span class="segment${hard ? ' hard-seg' : ''}">${text}</span>`;
-        }).join('');
-        btr.innerHTML = `<td></td><td colspan="3"><div class="segments">${spans}</div></td>`;
-        pBody.appendChild(btr);
-      }
+      const last = groups[groups.length - 1];
+      if (last && last.day === s.day) last.sessions.push(s);
+      else groups.push({day: s.day, sessions: [s]});
+    });
+    groups.forEach((g, gi) => {
+      const totalRows = g.sessions.reduce((sum, s) => sum + 1 + (s.rpe || s.carbs ? 1 : 0) + (s.segments ? 1 : 0), 0);
+      g.sessions.forEach((s, si) => {
+        const tr = document.createElement('tr');
+        if (gi > 0 && si === 0) tr.className = 'day-start';
+        else if (si > 0) tr.className = 'day-sep';
+        const tag = s.tag ? ` <span class="tag ${s.tag}">${s.tag.toUpperCase()}</span>` : '';
+        const dayCell = si === 0 ? `<td class="day" rowspan="${totalRows}">${g.day}</td>` : '';
+        tr.innerHTML = `${dayCell}<td>${s.name}${tag}</td><td class="metric">${s.metric}</td><td class="dur">${s.dur}</td>`;
+        pBody.appendChild(tr);
+        if (s.rpe || s.carbs) {
+          const rtr = document.createElement('tr');
+          rtr.className = 'breakdown';
+          rtr.innerHTML = `<td colspan="3"><div class="segments">
+            <span class="segment">RPE <b>${s.rpe || '—'}</b>/10</span>
+            <span class="segment">Carbs <b>${s.carbs || '—'}</b></span>
+          </div></td>`;
+          pBody.appendChild(rtr);
+        }
+        if (s.segments) {
+          const btr = document.createElement('tr');
+          btr.className = 'breakdown';
+          const spans = s.segments.map(seg => {
+            const hard = seg.endsWith('|hard');
+            const text = hard ? seg.slice(0, -5) : seg;
+            return `<span class="segment${hard ? ' hard-seg' : ''}">${text}</span>`;
+          }).join('');
+          btr.innerHTML = `<td colspan="3"><div class="segments">${spans}</div></td>`;
+          pBody.appendChild(btr);
+        }
+      });
     });
     pNote.textContent = w.note || '';
     pDots.innerHTML = '';
