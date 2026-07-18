@@ -74,11 +74,22 @@ plan are written to be genuinely hard, not comfortably-hard.
 
 ## Phases
 
+**Note (2026-07-18):** a minor left-leg inflammation showed up (checked,
+doctor-cleared, not serious) — running a couple of days of bike instead
+of the next couple of running sessions while it settles, before deciding
+whether anything beyond that needs to change. Not restructuring the phase
+table over a few days — see `training/2026-07-16-week.md` for the actual
+adjustment. Also worth correcting when this does get revisited: travel
+actually starts 08-06, not 08-09 as below, and there's no pool access
+while traveling either (Phase 2 currently assumes swim frequency goes up,
+which won't be possible) — both need fixing whenever the phases past
+Phase 0 get touched next.
+
 | Phase | Dates | Weekly hours | Focus | Why |
 |---|---|---|---|---|
 | **0 — Exam rebuild** | 07-16 → 07-29 (2 wk) | 8.5–10.5h | Easy-dominant rebuild off the taper, ~10%/week from this week's 8.7h | Chronic average is 9.9h — rebuilding toward that, not jumping to it, avoids repeating the spike pattern found in your data. Naturally fits the 1-2h/day exam guarantee. |
-| **1 — Pre-travel bike push** | 07-30 → 08-09 (~1.5 wk) | 10.5–12h | Extra bike frequency/duration | Banks bike fitness before the 3-week no-cycling gap starting 08-09 — directly addresses the 68%-zero-ride-weeks pattern before it gets worse. |
-| **2 — No-bike block (run/swim focus)** | 08-10 → 08-30 (3 wk) | 10–13h | Run volume + quality up (marathon-specific), swim frequency up | Bike is off the table by hard constraint, so the freed time goes to your two real near-term needs: marathon long-run progression and fixing swim consistency (37.5% zero-swim weeks). Insert a down week around 08-24 — this is week 3 of continuous building, matching the "deload every 3-4 weeks" research in `plan-my-week`. |
+| **1 — Pre-travel bike push** | 07-30 → 08-09 (~1.5 wk) | 10.5–12h | Extra bike frequency/duration | Banks bike fitness before the 3-week no-cycling gap starting 08-09 — directly addresses the 68%-zero-ride-weeks pattern before it gets worse. **Dates need correcting to end 08-05 once revisited — see note above.** |
+| **2 — No-bike block (run/swim focus)** | 08-10 → 08-30 (3 wk) | 10–13h | Run volume + quality up (marathon-specific), swim frequency up | Bike is off the table by hard constraint, so the freed time goes to your two real near-term needs: marathon long-run progression and fixing swim consistency (37.5% zero-swim weeks). Insert a down week around 08-24 — this is week 3 of continuous building, matching the "deload every 3-4 weeks" research in `plan-my-week`. **Needs redesign once revisited — no pool during travel either, so this can't lean on swim; see note above.** |
 | **3 — Marathon-specific build** | 08-31 → 09-27 (4 wk) | 12–15h | Long run → 28-32km peak, marathon-pace/tempo intervals, bike reintroduced at maintenance (not building), swim 1x/week min | This is the direct answer to the marathon limiter: current longest run is 21.1km, sub-2:48 needs real endurance at 42.2km. Bike/swim held at maintenance, not zero, per your instruction not to sacrifice tri fitness for the marathon. |
 | **4 — Taper** | 09-28 → 10-10 (2 wk) | ~8-9h → ~5-6h | Volume down, some intensity/frequency retained | Standard taper mechanics — cut duration, keep touches, arrive fresh for 10-11. |
 | **Race** | **2026-10-11** | — | Munich Marathon, target sub-2:48:00 | — |
