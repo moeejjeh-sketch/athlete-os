@@ -259,13 +259,13 @@
     <div class="card" style="border-color: var(--orange);">
       <h2>What Should I Do Today &mdash; Sun Jul 26</h2>
       <div class="readiness" style="margin-bottom: 14px;">
-        <div class="badge"><span class="dot"></span>GO HARD</div>
+        <div class="badge warn"><span class="dot"></span>GO EASY</div>
         <div class="details">
-          ACWR <b>1.18</b> (right at the 1.2 caution line) &middot; week-over-week <b>+15.2%</b> (9.42h vs 8.18h) - last recorded sleep (7/25) 7.22h, HRV 45 BALANCED, RHR 54
+          ACWR <b>1.03</b> (safe zone, not a volume spike) &middot; HRV down 4 straight nights (55&rarr;53&rarr;45&rarr;<b>39</b>) &middot; RHR climbing (51&rarr;56) &middot; body battery recovery declining
         </div>
       </div>
       <div style="font-size:13.5px; line-height:1.6; color:var(--text-secondary); border-top: 1px solid var(--border); padding-top: 12px;">
-        Long run &mdash; easy, ~144 bpm, ~17&ndash;18km. Hold the easy pace; do not drift into the tempo gray zone. Exam week still on, keep fueling simple.
+        <b style="color:var(--text-primary)">Easy run, short, or full rest.</b> Not the planned long run. This week's planned recovery days kept getting swapped for hard efforts (Sat became a spontaneous 100km/3h40min ride) &mdash; that stacking, not total volume, is what's showing up in HRV/RHR. You reported feeling fine; logged as a real feel-vs-data disagreement, not dismissed &mdash; this is exactly when accumulated strain doesn't register yet. Let the trend rebound before going long again.
       </div>
     </div>
   </div>
@@ -997,15 +997,16 @@
         {day:"Fri 7/24", name:"Easy bike", tag:"easy", metric:"~150–180W (est.)", dur:"30 min", rpe:"2–3", carbs:"None needed"},
         {day:"Sat 7/25", name:"Quality run — tempo", tag:"hard", metric:"~166–186 bpm", dur:"60–65 min", rpe:"6–7 (tempo segment)", carbs:"~30g/hr during the tempo block",
          segments:["<b>15 min</b> warm-up, ~144 bpm","<b>25–28 min</b> tempo, ~166–186 bpm &middot; ~3:50–4:05/km|hard","<b>15–20 min</b> cool-down, ~144 bpm"]},
-        {day:"Sun 7/26", name:"Long run — easy", metric:"~144 bpm &middot; ~17–18km", dur:"100–105 min", rpe:"3–4", carbs:"~30–40g/hr after the 60 min mark"},
+        {day:"Sun 7/26", name:"Easy run, short (or rest) — revised", tag:"easy", metric:"~144 bpm max, conversational", dur:"30–40 min or rest", rpe:"2–3", carbs:"None needed",
+         segments:["Revised 7/26: not the planned long run &mdash; HRV down 4 straight nights, RHR climbing, after Saturday's unplanned 100km ride. Let the trend rebound first."]},
         {day:"Mon 7/27", name:"Recovery bike + Gym (Anterior)", metric:"&lt;130W (est.)", dur:"30–40 min + gym", rpe:"2", carbs:"None needed",
          segments:["<b>30–40 min</b> easy spin, &lt;130W"]},
-        {day:"Tue 7/28", name:"Quality bike", tag:"hard", metric:"~218–252W (est.)", dur:"75–80 min", rpe:"7–8 (interval segments)", carbs:"~40–50g/hr",
-         segments:["<b>15 min</b> warm-up, easy","<b>3&times;9 min</b> hard, ~218–252W (est.)|hard","<b>4 min</b> easy spin between reps","<b>10–15 min</b> cool-down, easy"]},
-        {day:"Wed 7/29", name:"Easy run + Gym (Posterior)", metric:"~144 bpm", dur:"45–50 min + gym", rpe:"3", carbs:"None needed",
-         segments:["<b>45–50 min</b> easy run, ~144 bpm"]},
+        {day:"Tue 7/28", name:"Quality bike — conditional on HRV rebound", tag:"hard", metric:"If proceeding: ~218–252W. If not: easy spin, &lt;150W", dur:"75–80 min or 30–40 min", rpe:"7–8 if hard, 2–3 if easy", carbs:"~40–50g/hr if hard, none if easy",
+         segments:["Revised 7/26: only go hard here if HRV/RHR actually show a rebound by Monday night &mdash; otherwise easy spin instead."]},
+        {day:"Wed 7/29", name:"Easy run + Gym (Posterior) — must stay easy", metric:"~144 bpm, hard ceiling", dur:"45–50 min + gym", rpe:"3", carbs:"None needed",
+         segments:["Revised 7/26: this exact session hit 192bpm two weeks ago labeled \"easy\" &mdash; watch effort directly, not just the label."]},
       ],
-      note: "Built ahead of schedule at your request. Not yet reactive to real 07-16 execution data since that week hadn't happened yet — the next real /plan-my-week run may still adjust this. Full A/P/U rotation restored this week."
+      note: "Revised 2026-07-26: Sun/Tue/Wed adjusted after a real HRV/RHR decline trend (4 straight nights down) following a week where planned recovery days repeatedly got replaced with hard efforts, including a spontaneous 100km ride Saturday. ACWR itself is fine (1.03) — this is a recovery-distribution fix, not a volume cut. Swim still hasn't happened this week (missed Thursday) — now the pattern across every review period so far."
     }
   ];
 
